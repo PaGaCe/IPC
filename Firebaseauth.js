@@ -7,12 +7,7 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
 } from "firebase/auth";
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-} from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -89,9 +84,16 @@ export async function ensureUserProfile(user) {
 // Safe to call repeatedly — replaces any existing entry for the same code.
 export async function addLeagueToProfile(uid, code, teamName) {
   try {
-    const profile = (await getUserProfile(uid)) || { displayName: "", email: "", leagues: [] };
+    const profile = (await getUserProfile(uid)) || {
+      displayName: "",
+      email: "",
+      leagues: [],
+    };
     const otherLeagues = (profile.leagues || []).filter((l) => l.code !== code);
-    const updated = { ...profile, leagues: [...otherLeagues, { code, teamName }] };
+    const updated = {
+      ...profile,
+      leagues: [...otherLeagues, { code, teamName }],
+    };
     await setDoc(userDocRef(uid), updated);
     return updated;
   } catch (e) {
@@ -104,7 +106,10 @@ export async function removeLeagueFromProfile(uid, code) {
   try {
     const profile = await getUserProfile(uid);
     if (!profile) return null;
-    const updated = { ...profile, leagues: (profile.leagues || []).filter((l) => l.code !== code) };
+    const updated = {
+      ...profile,
+      leagues: (profile.leagues || []).filter((l) => l.code !== code),
+    };
     await setDoc(userDocRef(uid), updated);
     return updated;
   } catch (e) {
