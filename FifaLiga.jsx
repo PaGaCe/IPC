@@ -5994,16 +5994,6 @@ export default function FifaLiga() {
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={() => setLegendBuyConfirm(null)}
-                style={{
-                  ...btn("transparent"),
-                  border: "1px solid #1a3050",
-                  color: "#5a7a9a",
-                }}
-              >
-                Cancelar
-              </button>
-              <button
                 onClick={() => buyLegend(legendBuyConfirm)}
                 style={btn("#c0392b")}
               >
