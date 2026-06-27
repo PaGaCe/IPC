@@ -851,18 +851,16 @@ export default function FifaLiga() {
     setTeams(u);
     save({ teams: u });
   };
-  const updateTeamCrest = (teamName, dataUrl) => {
+  const updateTeamEmoji = (teamName, emoji) => {
+    // Keep only the first emoji/character the user picked (some keyboards
+    // insert extra invisible variation-selector codepoints; a couple of
+    // visible chars is plenty for a crest icon).
+    const trimmed = (emoji || "").slice(0, 4);
     const u = teams.map((t) =>
-      t.name !== teamName ? t : { ...t, crest: dataUrl },
+      t.name !== teamName ? t : { ...t, crestEmoji: trimmed },
     );
     setTeams(u);
     save({ teams: u });
-  };
-  const handleCrestUpload = (teamName, file) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => updateTeamCrest(teamName, e.target.result);
-    reader.readAsDataURL(file);
   };
 
   // ── Start tournament: admin only ──
@@ -2248,7 +2246,7 @@ export default function FifaLiga() {
                 cursor: "default",
               }}
             >
-              <Crest src={myTeamObj?.crest} size={18} />
+              <Crest emoji={myTeamObj?.crestEmoji} size={18} />
               {myTeamName}
             </div>
           )}
@@ -2715,7 +2713,7 @@ export default function FifaLiga() {
                         gap: 6,
                       }}
                     >
-                      <Crest src={t.crest} size={16} />
+                      <Crest emoji={t.crestEmoji} size={16} />
                       {t.name}
                     </div>
                   ))}
@@ -2802,7 +2800,7 @@ export default function FifaLiga() {
                   gap: 12,
                 }}
               >
-                <Crest src={t.crest} size={32} />
+                <Crest emoji={t.crestEmoji} size={32} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14 }}>
                     {t.name}
@@ -2943,7 +2941,7 @@ export default function FifaLiga() {
                 >
                   {i + 1}
                 </span>
-                <Crest src={t.crest} size={28} />
+                <Crest emoji={t.crestEmoji} size={28} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
@@ -3038,7 +3036,7 @@ export default function FifaLiga() {
                       marginBottom: 10,
                     }}
                   >
-                    <Crest src={homeTeam?.crest} size={24} />
+                    <Crest emoji={homeTeam?.crestEmoji} size={24} />
                     <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>
                       {f.home}
                     </span>
@@ -3053,7 +3051,7 @@ export default function FifaLiga() {
                     >
                       {f.away}
                     </span>
-                    <Crest src={awayTeam?.crest} size={24} />
+                    <Crest emoji={awayTeam?.crestEmoji} size={24} />
                   </div>
                   {blocked && (
                     <p
@@ -3114,7 +3112,7 @@ export default function FifaLiga() {
                     style={{ display: "flex", alignItems: "center", gap: 8 }}
                   >
                     <Crest
-                      src={teams.find((t) => t.name === f.home)?.crest}
+                      emoji={teams.find((t) => t.name === f.home)?.crestEmoji}
                       size={22}
                     />
                     <span
@@ -3154,7 +3152,7 @@ export default function FifaLiga() {
                       {f.away}
                     </span>
                     <Crest
-                      src={teams.find((t) => t.name === f.away)?.crest}
+                      emoji={teams.find((t) => t.name === f.away)?.crestEmoji}
                       size={22}
                     />
                   </div>
@@ -3280,19 +3278,13 @@ export default function FifaLiga() {
                       style={{ display: "flex", alignItems: "center", gap: 10 }}
                     >
                       {isOwn ? (
-                        <label style={{ cursor: "pointer" }}>
-                          <Crest src={t.crest} size={32} />
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) =>
-                              handleCrestUpload(t.name, e.target.files[0])
-                            }
-                            style={{ display: "none" }}
-                          />
-                        </label>
+                        <EmojiCrestPicker
+                          emoji={t.crestEmoji}
+                          size={32}
+                          onChange={(emoji) => updateTeamEmoji(t.name, emoji)}
+                        />
                       ) : (
-                        <Crest src={t.crest} size={32} />
+                        <Crest emoji={t.crestEmoji} size={32} />
                       )}
                       <div>
                         <div style={{ fontWeight: 700, fontSize: 15 }}>
@@ -4571,7 +4563,7 @@ export default function FifaLiga() {
                                         : 1,
                                   }}
                                 >
-                                  <Crest src={t1?.crest} size={16} />
+                                  <Crest emoji={t1?.crestEmoji} size={16} />
                                   <span
                                     style={{
                                       fontSize: 12,
@@ -4608,7 +4600,7 @@ export default function FifaLiga() {
                                         : 1,
                                   }}
                                 >
-                                  <Crest src={t2?.crest} size={16} />
+                                  <Crest emoji={t2?.crestEmoji} size={16} />
                                   <span
                                     style={{
                                       fontSize: 12,
@@ -5147,7 +5139,7 @@ export default function FifaLiga() {
                     }}
                   >
                     <Crest
-                      src={teams.find((t) => t.name === name)?.crest}
+                      emoji={teams.find((t) => t.name === name)?.crestEmoji}
                       size={20}
                     />
                     <span style={{ fontWeight: 700, fontSize: 13 }}>
@@ -5377,7 +5369,7 @@ export default function FifaLiga() {
                         }}
                       >
                         <Crest
-                          src={teams.find((t) => t.name === name)?.crest}
+                          emoji={teams.find((t) => t.name === name)?.crestEmoji}
                           size={20}
                         />
                         <span style={{ fontWeight: 700, fontSize: 13 }}>
@@ -6008,22 +6000,7 @@ export default function FifaLiga() {
 }
 
 // ─── Helper subcomponents ────────────────────────────────────────────────────
-function Crest({ src, size = 28 }) {
-  if (src)
-    return (
-      <img
-        src={src}
-        alt=""
-        style={{
-          width: size,
-          height: size,
-          borderRadius: 6,
-          objectFit: "cover",
-          flexShrink: 0,
-          border: "1px solid #1a3050",
-        }}
-      />
-    );
+function Crest({ emoji, size = 28 }) {
   return (
     <div
       style={{
@@ -6035,11 +6012,74 @@ function Crest({ src, size = 28 }) {
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
-        fontSize: size * 0.5,
+        fontSize: size * 0.6,
+        lineHeight: 1,
       }}
     >
-      ⚽
+      {emoji || "⚽"}
     </div>
+  );
+}
+
+// Lets the user pick a team crest using their device's native emoji
+// keyboard, instead of uploading an image (no file size, no Firestore
+// 1MB-per-document risk). Tapping the crest opens a tiny text input;
+// typing/selecting an emoji there and tapping away (blur) or pressing
+// Enter saves it.
+function EmojiCrestPicker({ emoji, size = 32, onChange }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(emoji || "");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) inputRef.current.focus();
+  }, [editing]);
+
+  const commit = () => {
+    setEditing(false);
+    if (draft && draft !== emoji) onChange(draft);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+        }}
+        placeholder="⚽"
+        style={{
+          width: size + 20,
+          height: size,
+          borderRadius: 6,
+          textAlign: "center",
+          background: "#0b1525",
+          border: "1px solid #1a5f96",
+          color: "#e8eaf0",
+          fontSize: size * 0.55,
+          outline: "none",
+        }}
+      />
+    );
+  }
+  return (
+    <button
+      onClick={() => {
+        setDraft(emoji || "");
+        setEditing(true);
+      }}
+      style={{
+        background: "none",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+      }}
+    >
+      <Crest emoji={emoji} size={size} />
+    </button>
   );
 }
 

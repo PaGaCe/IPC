@@ -135,7 +135,7 @@ exports.GLOBAL_POOL = [
     pos: "MCO",
     nat: "England",
     club: "Real Madrid",
-    overall: 90,
+    overall: 89,
     pace: 80,
     shooting: 87,
     passing: 83,
