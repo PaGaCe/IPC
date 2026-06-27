@@ -8,7 +8,12 @@ import {
   addLeagueToProfile,
   removeLeagueFromProfile,
 } from "./firebaseAuth";
-import { SQUAD_POOL, DRAFT_STARS, MARKET_POOL } from "./PlayersPool";
+import {
+  SQUAD_POOL,
+  DRAFT_STARS,
+  MARKET_POOL,
+  LEGEND_POOL,
+} from "./PlayersPool";
 
 // ─── VIEWS ──────────────────────────────────────────────────────────────────
 const VIEWS = {
@@ -51,6 +56,9 @@ const SEASON_PRIZE_TOPSCORER = 5,
 const TOURNAMENT_PRIZE_MONEY = 40;
 const PLAYER_PICK_MIN_OVERALL = 87,
   PLAYER_PICK_MAX_OVERALL = 89;
+const LEGEND_PRIZE_MAX_OVERALL = 89; // tournament prize: a legend rated 89 or below
+const LEGEND_MARKET_MIN_OVERALL = 89; // market purchase: a legend rated 89 or above
+const LEGEND_MARKET_PRICE = 100;
 const FINAL_RANKING_PRIZE_FIRST = 50,
   FINAL_RANKING_PRIZE_DECAY = 0.3; // 1st=50M, each next position -30% of the previous
 function finalRankingPrize(positionIdx) {
@@ -442,6 +450,8 @@ export default function FifaLiga() {
   //   selectedIdx: number|null }
   const [championPrize, setChampionPrize] = useState(null);
   const [playerPickSwapModal, setPlayerPickSwapModal] = useState(null); // {newPlayer} when squad is full
+  const [legendBuyConfirm, setLegendBuyConfirm] = useState(null); // legend player pending purchase confirmation
+  const [legendSwapModal, setLegendSwapModal] = useState(null); // {newPlayer} when squad is full after legend purchase
 
   const [offers, setOffers] = useState([]); // [{offerId, fromTeam, toTeam, player, amount, status, createdAt}]
   const [notifications, setNotifications] = useState([]); // [{id, type, text, createdAt, read}]
@@ -1005,10 +1015,35 @@ export default function FifaLiga() {
     save({ championPrize: prize });
   };
 
+  const startLegendPick = () => {
+    const usedNames = teams.flatMap((t) => allPlayersOf(t).map((p) => p.name));
+    const eligible = LEGEND_POOL.filter(
+      (p) =>
+        p.overall <= LEGEND_PRIZE_MAX_OVERALL && !usedNames.includes(p.name),
+    );
+    if (eligible.length < 1) {
+      showToast(
+        "No quedan leyendas libres (≤89) para este premio. Elige otra opción.",
+      );
+      return;
+    }
+    const cards = [shuffle(eligible)[0]];
+    const prize = {
+      claimed: false,
+      type: "legendpick",
+      cards,
+      revealed: [false],
+      selectedIdx: null,
+    };
+    setChampionPrize(prize);
+    save({ championPrize: prize });
+  };
+
   const revealCard = (idx) => {
     if (
       !championPrize ||
-      championPrize.type !== "playerpick" ||
+      (championPrize.type !== "playerpick" &&
+        championPrize.type !== "legendpick") ||
       championPrize.claimed
     )
       return;
@@ -1087,6 +1122,81 @@ export default function FifaLiga() {
     setPlayerPickSwapModal(null);
     save({ teams: updatedTeams, championPrize: prize });
     showToast(`¡${newPlayer.name} se une a ${championTeamName}!`, "success");
+  };
+
+  // ── Buy a legend (overall >= 89) from the market for a fixed price ──
+  const buyLegend = (legendPlayer) => {
+    if (!myTeamName) {
+      showToast("Necesitas tu propio equipo para comprar");
+      return;
+    }
+    const team = teams.find((t) => t.name === myTeamName);
+    if (!team || team.budget < LEGEND_MARKET_PRICE) {
+      showToast("Saldo insuficiente");
+      setLegendBuyConfirm(null);
+      return;
+    }
+    const newPlayer = {
+      ...legendPlayer,
+      id: `legend_${Date.now()}`,
+      goals: 0,
+      assists: 0,
+      mvps: 0,
+      clauseValue: LEGEND_MARKET_PRICE,
+      joinedAt: Date.now(),
+    };
+    const allP = allPlayersOf(team);
+    if (allP.length >= MAX_SQUAD) {
+      setLegendBuyConfirm(null);
+      setLegendSwapModal({ newPlayer });
+      return;
+    }
+    const updatedTeams = teams.map((t) =>
+      t.name === myTeamName
+        ? {
+            ...t,
+            budget: t.budget - LEGEND_MARKET_PRICE,
+            squad: {
+              ...t.squad,
+              squad: [...(t.squad?.squad || []), newPlayer],
+            },
+          }
+        : t,
+    );
+    setTeams(updatedTeams);
+    setLegendBuyConfirm(null);
+    save({ teams: updatedTeams });
+    showToast(`¡${legendPlayer.name} se une a ${myTeamName}!`, "success");
+  };
+
+  const resolveLegendSwap = (removeId) => {
+    if (!legendSwapModal) return;
+    const { newPlayer } = legendSwapModal;
+    const team = teams.find((t) => t.name === myTeamName);
+    if (!team || team.budget < LEGEND_MARKET_PRICE) {
+      showToast("Saldo insuficiente");
+      setLegendSwapModal(null);
+      return;
+    }
+    const updatedTeams = teams.map((t) => {
+      if (t.name !== myTeamName) return t;
+      const isStarRemoved = t.squad?.star?.id === removeId;
+      const newSquad = isStarRemoved
+        ? t.squad.squad
+        : t.squad.squad.filter((p) => p.id !== removeId);
+      return {
+        ...t,
+        budget: t.budget - LEGEND_MARKET_PRICE,
+        squad: {
+          star: isStarRemoved ? null : t.squad.star,
+          squad: [...newSquad, newPlayer],
+        },
+      };
+    });
+    setTeams(updatedTeams);
+    setLegendSwapModal(null);
+    save({ teams: updatedTeams });
+    showToast(`¡${newPlayer.name} se une a ${myTeamName}!`, "success");
   };
 
   const resetAll = async () => {
@@ -1753,6 +1863,12 @@ export default function FifaLiga() {
 
   const allPlayersWithTeam = teams.flatMap((t) =>
     allPlayersOf(t).map((p) => ({ ...p, teamName: t.name })),
+  );
+  const usedPlayerNames = allPlayersWithTeam.map((p) => p.name);
+  const availableLegends = LEGEND_POOL.filter(
+    (p) =>
+      p.overall >= LEGEND_MARKET_MIN_OVERALL &&
+      !usedPlayerNames.includes(p.name),
   );
   const topScorers = [...allPlayersWithTeam]
     .filter((p) => p.goals > 0)
@@ -3283,6 +3399,57 @@ export default function FifaLiga() {
               quién las hizo.
             </p>
 
+            {availableLegends.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div
+                  style={{
+                    color: "#c0392b",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  🏆 Leyendas disponibles ({fmtM(LEGEND_MARKET_PRICE)} cada una)
+                </div>
+
+                <div
+                  style={{
+                    ...card,
+                    background: "linear-gradient(135deg,#1a0d10,#0d1b2e)",
+                    border: "1px solid #c0392b",
+                    textAlign: "center",
+                    padding: "20px 16px",
+                  }}
+                >
+                  <div
+                    style={{ fontSize: 13, color: "#4a6a8a", marginBottom: 12 }}
+                  >
+                    {availableLegends.length} leyenda
+                    {availableLegends.length !== 1 ? "s" : ""} disponible
+                    {availableLegends.length !== 1 ? "s" : ""}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const random =
+                        availableLegends[
+                          Math.floor(Math.random() * availableLegends.length)
+                        ];
+                      setLegendBuyConfirm(random);
+                    }}
+                    style={{
+                      ...btn("#c0392b"),
+                      padding: "10px 20px",
+                      fontSize: 13,
+                    }}
+                  >
+                    🎲 Obtener leyenda aleatoria — {fmtM(LEGEND_MARKET_PRICE)}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {marketList.map((player) => {
                 const myBid = myTeamName
@@ -4125,7 +4292,14 @@ export default function FifaLiga() {
                             >
                               Elige el premio:
                             </p>
-                            <div style={{ display: "flex", gap: 8 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                flexWrap: "wrap",
+                                justifyContent: "center",
+                              }}
+                            >
                               <button
                                 onClick={() => claimMoneyPrize(champion)}
                                 style={{ ...btn("#27ae60"), fontSize: 13 }}
@@ -4137,6 +4311,12 @@ export default function FifaLiga() {
                                 style={{ ...btn("#8e44ad"), fontSize: 13 }}
                               >
                                 🎴 Player Pick
+                              </button>
+                              <button
+                                onClick={startLegendPick}
+                                style={{ ...btn("#c0392b"), fontSize: 13 }}
+                              >
+                                🏆 Leyenda
                               </button>
                             </div>
                           </div>
@@ -4155,7 +4335,8 @@ export default function FifaLiga() {
                             </p>
                           )}
 
-                        {championPrize?.type === "playerpick" &&
+                        {(championPrize?.type === "playerpick" ||
+                          championPrize?.type === "legendpick") &&
                           !championPrize.claimed && (
                             <div>
                               <p
@@ -4165,8 +4346,9 @@ export default function FifaLiga() {
                                   marginBottom: 12,
                                 }}
                               >
-                                Toca una carta para revelarla, luego
-                                selecciónala y confirma.
+                                {championPrize.cards.length > 1
+                                  ? "Toca una carta para revelarla, luego selecciónala y confirma."
+                                  : "Toca la carta para revelar tu leyenda y confirma."}
                               </p>
                               <div
                                 style={{
@@ -4196,7 +4378,9 @@ export default function FifaLiga() {
                                         cursor: "pointer",
                                         background: isRevealed
                                           ? "#0d1b2e"
-                                          : "linear-gradient(135deg,#1a5f96,#0d1b2e)",
+                                          : championPrize.type === "legendpick"
+                                            ? "linear-gradient(135deg,#c0392b,#0d1b2e)"
+                                            : "linear-gradient(135deg,#1a5f96,#0d1b2e)",
                                         border: isSelected
                                           ? "2px solid #f0c040"
                                           : "1px solid #1a3050",
@@ -4214,7 +4398,9 @@ export default function FifaLiga() {
                                       {!isRevealed ? (
                                         <>
                                           <span style={{ fontSize: 28 }}>
-                                            🎴
+                                            {championPrize.type === "legendpick"
+                                              ? "🏆"
+                                              : "🎴"}
                                           </span>
                                           <span
                                             style={{
@@ -4294,7 +4480,8 @@ export default function FifaLiga() {
                             </div>
                           )}
 
-                        {championPrize?.type === "playerpick" &&
+                        {(championPrize?.type === "playerpick" ||
+                          championPrize?.type === "legendpick") &&
                           championPrize.claimed && (
                             <p
                               style={{
@@ -4303,7 +4490,9 @@ export default function FifaLiga() {
                                 fontSize: 14,
                               }}
                             >
-                              🎴{" "}
+                              {championPrize.type === "legendpick"
+                                ? "🏆"
+                                : "🎴"}{" "}
                               {
                                 championPrize.cards[championPrize.selectedIdx]
                                   .name
