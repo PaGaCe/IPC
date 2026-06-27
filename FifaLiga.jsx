@@ -1,8 +1,19 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { storage } from "./firebaseStorage";
+import {
+  signInWithGoogle,
+  signOutUser,
+  onAuthChange,
+  ensureUserProfile,
+  addLeagueToProfile,
+  removeLeagueFromProfile,
+} from "./firebaseAuth";
+import { SQUAD_POOL, DRAFT_STARS, MARKET_POOL } from "./PlayersPool";
 
 // ─── VIEWS ──────────────────────────────────────────────────────────────────
 const VIEWS = {
+  LOGIN: "login",
+  MY_LEAGUES: "my_leagues",
   HOME: "home",
   CREATE_LEAGUE: "create_league",
   JOIN_LEAGUE: "join_league",
@@ -24,2213 +35,6 @@ function genLeagueCode() {
     code += chars[Math.floor(Math.random() * chars.length)];
   return code;
 }
-
-// ─── REAL FC 26 PLAYER DATABASE (verified ratings, June 2026) ───────────────
-const MARKET_POOL = [
-  {
-    name: "Gregor Kobel",
-    pos: "GK",
-    nat: "Switzerland",
-    club: "Dortmund",
-    overall: 86,
-    pace: 46,
-    shooting: 16,
-    passing: 72,
-    dribbling: 40,
-    defending: 13,
-    physical: 78,
-  },
-  {
-    name: "Joan García",
-    pos: "GK",
-    nat: "Spain",
-    club: "Barcelona",
-    overall: 86,
-    pace: 52,
-    shooting: 18,
-    passing: 74,
-    dribbling: 44,
-    defending: 14,
-    physical: 72,
-  },
-  {
-    name: "Yann Sommer",
-    pos: "GK",
-    nat: "Switzerland",
-    club: "Inter Milan",
-    overall: 86,
-    pace: 48,
-    shooting: 18,
-    passing: 72,
-    dribbling: 42,
-    defending: 13,
-    physical: 76,
-  },
-  {
-    name: "Mohamed Salah",
-    pos: "RW",
-    nat: "Egypt",
-    club: "Liverpool",
-    overall: 89,
-    pace: 91,
-    shooting: 89,
-    passing: 81,
-    dribbling: 89,
-    defending: 45,
-    physical: 75,
-  },
-  {
-    name: "Kylian Mbappé",
-    pos: "ST",
-    nat: "France",
-    club: "Real Madrid",
-    overall: 91,
-    pace: 97,
-    shooting: 90,
-    passing: 80,
-    dribbling: 92,
-    defending: 36,
-    physical: 78,
-  },
-  {
-    name: "Bremer",
-    pos: "CB",
-    nat: "Brazil",
-    club: "Juventus",
-    overall: 86,
-    pace: 81,
-    shooting: 43,
-    passing: 72,
-    dribbling: 65,
-    defending: 84,
-    physical: 83,
-  },
-  {
-    name: "Scott McTominay",
-    pos: "CM",
-    nat: "Scotland",
-    club: "Napoli",
-    overall: 86,
-    pace: 81,
-    shooting: 43,
-    passing: 72,
-    dribbling: 65,
-    defending: 84,
-    physical: 83,
-  },
-  {
-    name: "Ousmane Dembélé",
-    pos: "RW",
-    nat: "France",
-    club: "PSG",
-    overall: 90,
-    pace: 90,
-    shooting: 85,
-    passing: 82,
-    dribbling: 93,
-    defending: 30,
-    physical: 74,
-  },
-  {
-    name: "Jules Koundé",
-    pos: "RB",
-    nat: "France",
-    club: "FC Barcelona",
-    overall: 86,
-    pace: 84,
-    shooting: 55,
-    passing: 74,
-    dribbling: 78,
-    defending: 83,
-    physical: 85,
-  },
-  {
-    name: "Jan Oblak",
-    pos: "GK",
-    nat: "Slovenia",
-    club: "Atletico de Madrid",
-    overall: 88,
-    pace: 90,
-    shooting: 85,
-    passing: 82,
-    dribbling: 93,
-    defending: 30,
-    physical: 74,
-  },
-  {
-    name: "Rodri",
-    pos: "CDM",
-    nat: "Spain",
-    club: "Manchester City",
-    overall: 89,
-    pace: 63,
-    shooting: 74,
-    passing: 88,
-    dribbling: 84,
-    defending: 89,
-    physical: 84,
-  },
-  {
-    name: "Virgil van Dijk",
-    pos: "CB",
-    nat: "Netherlands",
-    club: "Liverpool",
-    overall: 88,
-    pace: 78,
-    shooting: 60,
-    passing: 78,
-    dribbling: 72,
-    defending: 91,
-    physical: 88,
-  },
-  {
-    name: "Kevin de Bruyne",
-    pos: "CM",
-    nat: "Belgium",
-    club: "Napoli",
-    overall: 87,
-    pace: 78,
-    shooting: 60,
-    passing: 78,
-    dribbling: 72,
-    defending: 91,
-    physical: 88,
-  },
-  {
-    name: "Jude Bellingham",
-    pos: "CAM",
-    nat: "England",
-    club: "Real Madrid",
-    overall: 90,
-    pace: 80,
-    shooting: 87,
-    passing: 83,
-    dribbling: 88,
-    defending: 78,
-    physical: 83,
-  },
-  {
-    name: "Thibaut Courtois",
-    pos: "GK",
-    nat: "Belgium",
-    club: "Real Madrid",
-    overall: 90,
-    pace: 80,
-    shooting: 87,
-    passing: 83,
-    dribbling: 88,
-    defending: 78,
-    physical: 83,
-  },
-  {
-    name: "Erling Haaland",
-    pos: "ST",
-    nat: "Norway",
-    club: "Manchester City",
-    overall: 90,
-    pace: 88,
-    shooting: 93,
-    passing: 66,
-    dribbling: 81,
-    defending: 29,
-    physical: 89,
-  },
-  {
-    name: "Raphinha",
-    pos: "LW",
-    nat: "Brazil",
-    club: "Barcelona",
-    overall: 89,
-    pace: 90,
-    shooting: 84,
-    passing: 83,
-    dribbling: 88,
-    defending: 42,
-    physical: 70,
-  },
-  {
-    name: "Lamine Yamal",
-    pos: "RW",
-    nat: "Spain",
-    club: "Barcelona",
-    overall: 89,
-    pace: 88,
-    shooting: 82,
-    passing: 85,
-    dribbling: 91,
-    defending: 32,
-    physical: 62,
-  },
-  {
-    name: "Achraf Hakimi",
-    pos: "RB",
-    nat: "Morocco",
-    club: "PSG",
-    overall: 89,
-    pace: 92,
-    shooting: 75,
-    passing: 80,
-    dribbling: 85,
-    defending: 79,
-    physical: 77,
-  },
-  {
-    name: "Vitinha",
-    pos: "CM",
-    nat: "Portugal",
-    club: "PSG",
-    overall: 90,
-    pace: 78,
-    shooting: 78,
-    passing: 88,
-    dribbling: 90,
-    defending: 74,
-    physical: 70,
-  },
-  {
-    name: "Nicolò Barella",
-    pos: "CM",
-    nat: "Italy",
-    club: "Inter Milan",
-    overall: 88,
-    pace: 78,
-    shooting: 78,
-    passing: 84,
-    dribbling: 85,
-    defending: 78,
-    physical: 80,
-  },
-  {
-    name: "Gianluigi Donnarumma",
-    pos: "GK",
-    nat: "Italy",
-    club: "Manchester City",
-    overall: 89,
-    pace: 50,
-    shooting: 20,
-    passing: 75,
-    dribbling: 42,
-    defending: 14,
-    physical: 82,
-  },
-  {
-    name: "Joshua Kimmich",
-    pos: "CDM",
-    nat: "Germany",
-    club: "Bayern Munich",
-    overall: 89,
-    pace: 70,
-    shooting: 77,
-    passing: 89,
-    dribbling: 84,
-    defending: 86,
-    physical: 75,
-  },
-  {
-    name: "Alisson",
-    pos: "GK",
-    nat: "Brazil",
-    club: "Liverpool",
-    overall: 88,
-    pace: 48,
-    shooting: 20,
-    passing: 79,
-    dribbling: 43,
-    defending: 15,
-    physical: 66,
-  },
-  {
-    name: "Harry Kane",
-    pos: "ST",
-    nat: "England",
-    club: "Bayern Munich",
-    overall: 90,
-    pace: 71,
-    shooting: 91,
-    passing: 84,
-    dribbling: 84,
-    defending: 46,
-    physical: 84,
-  },
-  {
-    name: "Fede Valverde",
-    pos: "CM",
-    nat: "Uruguay",
-    club: "Real Madrid",
-    overall: 89,
-    pace: 88,
-    shooting: 84,
-    passing: 84,
-    dribbling: 85,
-    defending: 79,
-    physical: 86,
-  },
-  {
-    name: "Vinícius Júnior",
-    pos: "LW",
-    nat: "Brazil",
-    club: "Real Madrid",
-    overall: 89,
-    pace: 95,
-    shooting: 84,
-    passing: 81,
-    dribbling: 91,
-    defending: 29,
-    physical: 69,
-  },
-  {
-    name: "Florian Wirtz",
-    pos: "CAM",
-    nat: "Germany",
-    club: "Liverpool",
-    overall: 87,
-    pace: 81,
-    shooting: 81,
-    passing: 87,
-    dribbling: 90,
-    defending: 51,
-    physical: 69,
-  },
-  {
-    name: "Bukayo Saka",
-    pos: "RW",
-    nat: "England",
-    club: "Arsenal",
-    overall: 87,
-    pace: 87,
-    shooting: 84,
-    passing: 83,
-    dribbling: 87,
-    defending: 48,
-    physical: 73,
-  },
-  {
-    name: "Gabriel Magalhães",
-    pos: "CB",
-    nat: "Brazil",
-    club: "Arsenal",
-    overall: 89,
-    pace: 75,
-    shooting: 55,
-    passing: 68,
-    dribbling: 62,
-    defending: 88,
-    physical: 87,
-  },
-  {
-    name: "Alexander Isak",
-    pos: "ST",
-    nat: "Sweden",
-    club: "Liverpool",
-    overall: 87,
-    pace: 88,
-    shooting: 87,
-    passing: 74,
-    dribbling: 85,
-    defending: 32,
-    physical: 78,
-  },
-  {
-    name: "Jamal Musiala",
-    pos: "CAM",
-    nat: "Germany",
-    club: "Bayern Munich",
-    overall: 87,
-    pace: 80,
-    shooting: 82,
-    passing: 80,
-    dribbling: 90,
-    defending: 66,
-    physical: 65,
-  },
-  {
-    name: "Michael Olise",
-    pos: "RW",
-    nat: "France",
-    club: "Bayern Munich",
-    overall: 89,
-    pace: 87,
-    shooting: 82,
-    passing: 83,
-    dribbling: 89,
-    defending: 35,
-    physical: 68,
-  },
-  {
-    name: "João Neves",
-    pos: "CM",
-    nat: "Portugal",
-    club: "PSG",
-    overall: 88,
-    pace: 78,
-    shooting: 74,
-    passing: 83,
-    dribbling: 86,
-    defending: 80,
-    physical: 73,
-  },
-  {
-    name: "Nuno Mendes",
-    pos: "LB",
-    nat: "Portugal",
-    club: "PSG",
-    overall: 88,
-    pace: 90,
-    shooting: 65,
-    passing: 78,
-    dribbling: 84,
-    defending: 82,
-    physical: 75,
-  },
-  {
-    name: "Bruno Fernandes",
-    pos: "CAM",
-    nat: "Portugal",
-    club: "Manchester Utd",
-    overall: 88,
-    pace: 73,
-    shooting: 84,
-    passing: 88,
-    dribbling: 85,
-    defending: 65,
-    physical: 74,
-  },
-  {
-    name: "Declan Rice",
-    pos: "CDM",
-    nat: "England",
-    club: "Arsenal",
-    overall: 88,
-    pace: 76,
-    shooting: 72,
-    passing: 81,
-    dribbling: 81,
-    defending: 85,
-    physical: 84,
-  },
-  {
-    name: "Lautaro Martínez",
-    pos: "ST",
-    nat: "Argentina",
-    club: "Inter",
-    overall: 88,
-    pace: 84,
-    shooting: 88,
-    passing: 80,
-    dribbling: 85,
-    defending: 60,
-    physical: 64,
-  },
-  {
-    name: "Martin Ødegaard",
-    pos: "CAM",
-    nat: "Norway",
-    club: "Arsenal",
-    overall: 86,
-    pace: 73,
-    shooting: 80,
-    passing: 88,
-    dribbling: 88,
-    defending: 60,
-    physical: 64,
-  },
-  {
-    name: "Willian Pacho",
-    pos: "CB",
-    nat: "Ecuador",
-    club: "PSG",
-    overall: 88,
-    pace: 80,
-    shooting: 70,
-    passing: 81,
-    dribbling: 82,
-    defending: 86,
-    physical: 81,
-  },
-  {
-    name: "Moisés Caicedo",
-    pos: "CDM",
-    nat: "Ecuador",
-    club: "Chelsea",
-    overall: 88,
-    pace: 80,
-    shooting: 70,
-    passing: 81,
-    dribbling: 82,
-    defending: 86,
-    physical: 81,
-  },
-  {
-    name: "William Saliba",
-    pos: "CB",
-    nat: "France",
-    club: "Arsenal",
-    overall: 88,
-    pace: 82,
-    shooting: 48,
-    passing: 70,
-    dribbling: 62,
-    defending: 87,
-    physical: 84,
-  },
-  {
-    name: "Alessandro Bastoni",
-    pos: "CB",
-    nat: "Italy",
-    club: "Inter Milan",
-    overall: 87,
-    pace: 74,
-    shooting: 48,
-    passing: 80,
-    dribbling: 70,
-    defending: 86,
-    physical: 80,
-  },
-  {
-    name: "Rúben Dias",
-    pos: "CB",
-    nat: "Portugal",
-    club: "Manchester City",
-    overall: 87,
-    pace: 73,
-    shooting: 45,
-    passing: 74,
-    dribbling: 60,
-    defending: 90,
-    physical: 86,
-  },
-  {
-    name: "Khvicha Kvaratskhelia",
-    pos: "LW",
-    nat: "Georgia",
-    club: "PSG",
-    overall: 88,
-    pace: 86,
-    shooting: 84,
-    passing: 85,
-    dribbling: 89,
-    defending: 68,
-    physical: 70,
-  },
-  {
-    name: "Alexis Mac Allister",
-    pos: "CM",
-    nat: "Argentina",
-    club: "Liverpool",
-    overall: 87,
-    pace: 72,
-    shooting: 78,
-    passing: 85,
-    dribbling: 86,
-    defending: 68,
-    physical: 70,
-  },
-  {
-    name: "David Raya",
-    pos: "GK",
-    nat: "Spain",
-    club: "Arsenal",
-    overall: 87,
-    pace: 50,
-    shooting: 18,
-    passing: 80,
-    dribbling: 46,
-    defending: 14,
-    physical: 70,
-  },
-  {
-    name: "Viktor Gyökeres",
-    pos: "ST",
-    nat: "Sweden",
-    club: "Arsenal",
-    overall: 86,
-    pace: 84,
-    shooting: 88,
-    passing: 70,
-    dribbling: 82,
-    defending: 35,
-    physical: 86,
-  },
-  {
-    name: "Cole Palmer",
-    pos: "CAM",
-    nat: "England",
-    club: "Chelsea",
-    overall: 86,
-    pace: 80,
-    shooting: 83,
-    passing: 82,
-    dribbling: 88,
-    defending: 42,
-    physical: 68,
-  },
-  {
-    name: "Serhou Guirassy",
-    pos: "ST",
-    nat: "Guinea",
-    club: "Dortmund",
-    overall: 87,
-    pace: 80,
-    shooting: 86,
-    passing: 64,
-    dribbling: 78,
-    defending: 30,
-    physical: 82,
-  },
-  {
-    name: "Marquinhos",
-    pos: "CB",
-    nat: "Brazil",
-    club: "PSG",
-    overall: 87,
-    pace: 72,
-    shooting: 50,
-    passing: 76,
-    dribbling: 68,
-    defending: 88,
-    physical: 80,
-  },
-  {
-    name: "Jonathan Tah",
-    pos: "CB",
-    nat: "Germany",
-    club: "Bayern Munich",
-    overall: 87,
-    pace: 74,
-    shooting: 42,
-    passing: 70,
-    dribbling: 64,
-    defending: 88,
-    physical: 87,
-  },
-  {
-    name: "Trent Alexander-Arnold",
-    pos: "RB",
-    nat: "England",
-    club: "Real Madrid",
-    overall: 87,
-    pace: 76,
-    shooting: 74,
-    passing: 90,
-    dribbling: 82,
-    defending: 72,
-    physical: 68,
-  },
-  {
-    name: "Luis Díaz",
-    pos: "LW",
-    nat: "Colombia",
-    club: "Bayern Munich",
-    overall: 87,
-    pace: 90,
-    shooting: 80,
-    passing: 75,
-    dribbling: 87,
-    defending: 38,
-    physical: 72,
-  },
-  {
-    name: "Patrik Schick",
-    pos: "ST",
-    nat: "Czech Rep.",
-    club: "Bayer Leverkusen",
-    overall: 85,
-    pace: 78,
-    shooting: 84,
-    passing: 70,
-    dribbling: 79,
-    defending: 30,
-    physical: 84,
-  },
-  {
-    name: "Ibrahima Konaté",
-    pos: "CB",
-    nat: "France",
-    club: "Liverpool",
-    overall: 84,
-    pace: 84,
-    shooting: 42,
-    passing: 65,
-    dribbling: 58,
-    defending: 87,
-    physical: 88,
-  },
-  {
-    name: "Lukaku",
-    pos: "ST",
-    nat: "Belgium",
-    club: "Napoli",
-    overall: 83,
-    pace: 84,
-    shooting: 86,
-    passing: 82,
-    dribbling: 88,
-    defending: 47,
-    physical: 86,
-  },
-  {
-    name: "Theo Hernández",
-    pos: "LB",
-    nat: "France",
-    club: "Al-Hilal",
-    overall: 84,
-    pace: 90,
-    shooting: 72,
-    passing: 74,
-    dribbling: 80,
-    defending: 78,
-    physical: 80,
-  },
-  {
-    name: "Nico Schlotterbeck",
-    pos: "CB",
-    nat: "Germany",
-    club: "Dortmund",
-    overall: 86,
-    pace: 81,
-    shooting: 43,
-    passing: 72,
-    dribbling: 65,
-    defending: 84,
-    physical: 83,
-  },
-  {
-    name: "Dayot Upamecano",
-    pos: "CB",
-    nat: "France",
-    club: "Bayern Munich",
-    overall: 86,
-    pace: 81,
-    shooting: 44,
-    passing: 70,
-    dribbling: 63,
-    defending: 85,
-    physical: 86,
-  },
-  {
-    name: "Péter Gulácsi",
-    pos: "GK",
-    nat: "Hungary",
-    club: "RB Leipzig",
-    overall: 85,
-    pace: 42,
-    shooting: 15,
-    passing: 70,
-    dribbling: 38,
-    defending: 12,
-    physical: 68,
-  },
-  {
-    name: "Soulé",
-    pos: "CAM",
-    nat: "Argentina",
-    club: "Roma",
-    overall: 85,
-    pace: 92,
-    shooting: 82,
-    passing: 84,
-    dribbling: 87,
-    defending: 42,
-    physical: 74,
-  },
-  {
-    name: "Vardy",
-    pos: "ST",
-    nat: "England",
-    club: "Cremonese",
-    overall: 85,
-    pace: 87,
-    shooting: 87,
-    passing: 80,
-    dribbling: 85,
-    defending: 63,
-    physical: 80,
-  },
-  {
-    name: "Bryan Mbeumo",
-    pos: "ST",
-    nat: "Cameroon",
-    club: "Manchester Utd",
-    overall: 85,
-    pace: 84,
-    shooting: 84,
-    passing: 76,
-    dribbling: 83,
-    defending: 38,
-    physical: 74,
-  },
-  {
-    name: "Unai Simón",
-    pos: "GK",
-    nat: "Spain",
-    club: "Athletic Club",
-    overall: 84,
-    pace: 42,
-    shooting: 14,
-    passing: 72,
-    dribbling: 40,
-    defending: 11,
-    physical: 74,
-  },
-  {
-    name: "Diogo Costa",
-    pos: "GK",
-    nat: "Portugal",
-    club: "FC Porto",
-    overall: 84,
-    pace: 44,
-    shooting: 14,
-    passing: 70,
-    dribbling: 38,
-    defending: 11,
-    physical: 72,
-  },
-  {
-    name: "Mike Maignan",
-    pos: "GK",
-    nat: "France",
-    club: "AC Milan",
-    overall: 87,
-    pace: 52,
-    shooting: 18,
-    passing: 78,
-    dribbling: 46,
-    defending: 14,
-    physical: 80,
-  },
-  {
-    name: "Rafael Leão",
-    pos: "ST",
-    nat: "Portugal",
-    club: "AC Milan",
-    overall: 84,
-    pace: 93,
-    shooting: 80,
-    passing: 75,
-    dribbling: 88,
-    defending: 30,
-    physical: 78,
-  },
-  {
-    name: "Luka Modrić",
-    pos: "CDM",
-    nat: "Croatia",
-    club: "AC Milan",
-    overall: 85,
-    pace: 62,
-    shooting: 76,
-    passing: 89,
-    dribbling: 87,
-    defending: 60,
-    physical: 60,
-  },
-  {
-    name: "Matheus Cunha",
-    pos: "LW",
-    nat: "Brazil",
-    club: "Manchester Utd",
-    overall: 83,
-    pace: 82,
-    shooting: 80,
-    passing: 76,
-    dribbling: 84,
-    defending: 40,
-    physical: 78,
-  },
-  {
-    name: "Adrien Rabiot",
-    pos: "CM",
-    nat: "France",
-    club: "AC Milan",
-    overall: 85,
-    pace: 72,
-    shooting: 78,
-    passing: 82,
-    dribbling: 80,
-    defending: 74,
-    physical: 84,
-  },
-  {
-    name: "Granit Xhaka",
-    pos: "CDM",
-    nat: "Switzerland",
-    club: "Sunderland",
-    overall: 85,
-    pace: 62,
-    shooting: 74,
-    passing: 84,
-    dribbling: 78,
-    defending: 82,
-    physical: 78,
-  },
-  {
-    name: "James Maddison",
-    pos: "CAM",
-    nat: "England",
-    club: "Tottenham",
-    overall: 84,
-    pace: 70,
-    shooting: 80,
-    passing: 86,
-    dribbling: 88,
-    defending: 42,
-    physical: 62,
-  },
-  {
-    name: "Pedri",
-    pos: "CM",
-    nat: "Spain",
-    club: "Barcelona",
-    overall: 90,
-    pace: 75,
-    shooting: 78,
-    passing: 88,
-    dribbling: 90,
-    defending: 78,
-    physical: 65,
-  },
-  {
-    name: "Martín Zubimendi",
-    pos: "CDM",
-    nat: "Spain",
-    club: "Arsenal",
-    overall: 85,
-    pace: 68,
-    shooting: 72,
-    passing: 85,
-    dribbling: 82,
-    defending: 84,
-    physical: 72,
-  },
-  {
-    name: "Sandro Tonali",
-    pos: "CDM",
-    nat: "Italy",
-    club: "Newcastle",
-    overall: 85,
-    pace: 68,
-    shooting: 75,
-    passing: 84,
-    dribbling: 82,
-    defending: 80,
-    physical: 78,
-  },
-  {
-    name: "Tijjani Reijnders",
-    pos: "CM",
-    nat: "Netherlands",
-    club: "Manchester City",
-    overall: 85,
-    pace: 79,
-    shooting: 78,
-    passing: 84,
-    dribbling: 86,
-    defending: 68,
-    physical: 70,
-  },
-  {
-    name: "Fabián Ruiz",
-    pos: "CM",
-    nat: "Spain",
-    club: "PSG",
-    overall: 85,
-    pace: 68,
-    shooting: 80,
-    passing: 86,
-    dribbling: 85,
-    defending: 70,
-    physical: 70,
-  },
-  {
-    name: "Marcos Llorente",
-    pos: "RB",
-    nat: "Spain",
-    club: "Atlético Madrid",
-    overall: 85,
-    pace: 90,
-    shooting: 78,
-    passing: 78,
-    dribbling: 82,
-    defending: 75,
-    physical: 82,
-  },
-  {
-    name: "Nico Williams",
-    pos: "LW",
-    nat: "Spain",
-    club: "Athletic Club",
-    overall: 85,
-    pace: 93,
-    shooting: 78,
-    passing: 78,
-    dribbling: 88,
-    defending: 30,
-    physical: 65,
-  },
-  {
-    name: "Dani Olmo",
-    pos: "CAM",
-    nat: "Spain",
-    club: "Barcelona",
-    overall: 84,
-    pace: 78,
-    shooting: 80,
-    passing: 84,
-    dribbling: 87,
-    defending: 50,
-    physical: 65,
-  },
-  {
-    name: "Ferran Torres",
-    pos: "ST",
-    nat: "Spain",
-    club: "Barcelona",
-    overall: 84,
-    pace: 84,
-    shooting: 82,
-    passing: 76,
-    dribbling: 84,
-    defending: 35,
-    physical: 68,
-  },
-  {
-    name: "Pau Cubarsí",
-    pos: "CB",
-    nat: "Spain",
-    club: "Barcelona",
-    overall: 83,
-    pace: 78,
-    shooting: 38,
-    passing: 75,
-    dribbling: 68,
-    defending: 83,
-    physical: 72,
-  },
-  {
-    name: "Gavi",
-    pos: "CM",
-    nat: "Spain",
-    club: "Barcelona",
-    overall: 83,
-    pace: 78,
-    shooting: 72,
-    passing: 80,
-    dribbling: 84,
-    defending: 72,
-    physical: 70,
-  },
-  {
-    name: "Mikel Merino",
-    pos: "CM",
-    nat: "Spain",
-    club: "Arsenal",
-    overall: 83,
-    pace: 72,
-    shooting: 76,
-    passing: 80,
-    dribbling: 80,
-    defending: 75,
-    physical: 80,
-  },
-  {
-    name: "Cambiaso",
-    pos: "LB",
-    nat: "Italy",
-    club: "Juventus",
-    overall: 85,
-    pace: 89,
-    shooting: 76,
-    passing: 87,
-    dribbling: 86,
-    defending: 84,
-    physical: 81,
-  },
-  {
-    name: "Alphonso Davies",
-    pos: "LB",
-    nat: "Canada",
-    club: "Bayern Munich",
-    overall: 84,
-    pace: 94,
-    shooting: 66,
-    passing: 80,
-    dribbling: 85,
-    defending: 82,
-    physical: 82,
-  },
-  {
-    name: "Exequiel Palacios",
-    pos: "CM",
-    nat: "Argentina",
-    club: "Bayer Leverkusen",
-    overall: 84,
-    pace: 75,
-    shooting: 78,
-    passing: 83,
-    dribbling: 82,
-    defending: 72,
-    physical: 74,
-  },
-  {
-    name: "Willi Orbán",
-    pos: "CB",
-    nat: "Hungary",
-    club: "RB Leipzig",
-    overall: 84,
-    pace: 70,
-    shooting: 40,
-    passing: 65,
-    dribbling: 55,
-    defending: 84,
-    physical: 85,
-  },
-  {
-    name: "Alejandro Grimaldo",
-    pos: "LB",
-    nat: "Spain",
-    club: "Bayer Leverkusen",
-    overall: 85,
-    pace: 78,
-    shooting: 78,
-    passing: 84,
-    dribbling: 85,
-    defending: 74,
-    physical: 72,
-  },
-  {
-    name: "Manuel Neuer",
-    pos: "GK",
-    nat: "Germany",
-    club: "Bayern Munich",
-    overall: 84,
-    pace: 38,
-    shooting: 14,
-    passing: 74,
-    dribbling: 42,
-    defending: 12,
-    physical: 72,
-  },
-  {
-    name: "Chukwuemeka",
-    pos: "CAM",
-    nat: "England",
-    club: "Borussia Dortmund",
-    overall: 84,
-    pace: 82,
-    shooting: 80,
-    passing: 83,
-    dribbling: 85,
-    defending: 65,
-    physical: 74,
-  },
-  {
-    name: "Lukebakio",
-    pos: "RW",
-    nat: "DR Congo",
-    club: "Sevilla",
-    overall: 84,
-    pace: 88,
-    shooting: 79,
-    passing: 76,
-    dribbling: 84,
-    defending: 32,
-    physical: 70,
-  },
-  {
-    name: "Angelo Stiller",
-    pos: "CM",
-    nat: "Germany",
-    club: "VfB Stuttgart",
-    overall: 83,
-    pace: 66,
-    shooting: 74,
-    passing: 85,
-    dribbling: 80,
-    defending: 72,
-    physical: 68,
-  },
-  {
-    name: "Oliver Baumann",
-    pos: "GK",
-    nat: "Germany",
-    club: "TSG Hoffenheim",
-    overall: 83,
-    pace: 44,
-    shooting: 14,
-    passing: 68,
-    dribbling: 36,
-    defending: 11,
-    physical: 66,
-  },
-  {
-    name: "Julian Brandt",
-    pos: "CAM",
-    nat: "Germany",
-    club: "Borussia Dortmund",
-    overall: 82,
-    pace: 76,
-    shooting: 78,
-    passing: 82,
-    dribbling: 84,
-    defending: 48,
-    physical: 68,
-  },
-  {
-    name: "Aleix García",
-    pos: "CM",
-    nat: "Spain",
-    club: "Bayer Leverkusen",
-    overall: 83,
-    pace: 68,
-    shooting: 72,
-    passing: 83,
-    dribbling: 80,
-    defending: 70,
-    physical: 68,
-  },
-  {
-    name: "Saúl",
-    pos: "CAM",
-    nat: "Spain",
-    club: "Atlético Madrid",
-    overall: 83,
-    pace: 70,
-    shooting: 75,
-    passing: 80,
-    dribbling: 82,
-    defending: 62,
-    physical: 74,
-  },
-  {
-    name: "Dybala",
-    pos: "CAM",
-    nat: "Argentina",
-    club: "Roma",
-    overall: 83,
-    pace: 78,
-    shooting: 84,
-    passing: 82,
-    dribbling: 88,
-    defending: 36,
-    physical: 65,
-  },
-  {
-    name: "Ritsu Doan",
-    pos: "RW",
-    nat: "Japan",
-    club: "Eintracht Frankfurt",
-    overall: 82,
-    pace: 84,
-    shooting: 78,
-    passing: 75,
-    dribbling: 82,
-    defending: 42,
-    physical: 62,
-  },
-  {
-    name: "Jonathan Burkardt",
-    pos: "ST",
-    nat: "Germany",
-    club: "Eintracht Frankfurt",
-    overall: 82,
-    pace: 78,
-    shooting: 80,
-    passing: 65,
-    dribbling: 76,
-    defending: 30,
-    physical: 78,
-  },
-  {
-    name: "Maximilian Mittelstädt",
-    pos: "LB",
-    nat: "Germany",
-    club: "VfB Stuttgart",
-    overall: 82,
-    pace: 80,
-    shooting: 60,
-    passing: 76,
-    dribbling: 78,
-    defending: 74,
-    physical: 70,
-  },
-  {
-    name: "Robin Koch",
-    pos: "CB",
-    nat: "Germany",
-    club: "Eintracht Frankfurt",
-    overall: 82,
-    pace: 72,
-    shooting: 40,
-    passing: 65,
-    dribbling: 55,
-    defending: 82,
-    physical: 80,
-  },
-  {
-    name: "Felix Nmecha",
-    pos: "CM",
-    nat: "Germany",
-    club: "Borussia Dortmund",
-    overall: 82,
-    pace: 75,
-    shooting: 72,
-    passing: 78,
-    dribbling: 80,
-    defending: 68,
-    physical: 75,
-  },
-  {
-    name: "Lobotka",
-    pos: "CDM",
-    nat: "Slovakia",
-    club: "Napoli",
-    overall: 82,
-    pace: 65,
-    shooting: 62,
-    passing: 84,
-    dribbling: 83,
-    defending: 78,
-    physical: 68,
-  },
-  {
-    name: "Yangel Herrera",
-    pos: "CDM",
-    nat: "Venezuela",
-    club: "Girona",
-    overall: 82,
-    pace: 76,
-    shooting: 68,
-    passing: 78,
-    dribbling: 78,
-    defending: 78,
-    physical: 78,
-  },
-  {
-    name: "Victor Osimhen",
-    pos: "ST",
-    nat: "Nigeria",
-    club: "Galatasaray",
-    overall: 86,
-    pace: 90,
-    shooting: 86,
-    passing: 65,
-    dribbling: 82,
-    defending: 25,
-    physical: 85,
-  },
-];
-
-// DRAFT_STARS: real players with verified overall = 86 (matches MARKET_POOL exactly)
-const DRAFT_STARS = [
-  {
-    name: "Bruno Guimarães",
-    pos: "CM",
-    nat: "Brazil",
-    club: "Newcastle",
-    overall: 86,
-    pace: 73,
-    shooting: 73,
-    passing: 84,
-    dribbling: 81,
-    defending: 84,
-    physical: 80,
-  },
-  {
-    name: "Cole Palmer",
-    pos: "CAM",
-    nat: "England",
-    club: "Chelsea",
-    overall: 86,
-    pace: 80,
-    shooting: 83,
-    passing: 82,
-    dribbling: 88,
-    defending: 42,
-    physical: 68,
-  },
-  {
-    name: "Nico Schlotterbeck",
-    pos: "CB",
-    nat: "Germany",
-    club: "Dortmund",
-    overall: 86,
-    pace: 81,
-    shooting: 43,
-    passing: 72,
-    dribbling: 65,
-    defending: 84,
-    physical: 83,
-  },
-  {
-    name: "Martin Ødegaard",
-    pos: "CAM",
-    nat: "Norway",
-    club: "Arsenal",
-    overall: 86,
-    pace: 73,
-    shooting: 80,
-    passing: 88,
-    dribbling: 88,
-    defending: 60,
-    physical: 64,
-  },
-  {
-    name: "Scott McTominay",
-    pos: "CM",
-    nat: "Scotland",
-    club: "Napoli",
-    overall: 86,
-    pace: 81,
-    shooting: 43,
-    passing: 72,
-    dribbling: 65,
-    defending: 84,
-    physical: 83,
-  },
-  {
-    name: "Dayot Upamecano",
-    pos: "CB",
-    nat: "France",
-    club: "Bayern Munich",
-    overall: 86,
-    pace: 81,
-    shooting: 44,
-    passing: 70,
-    dribbling: 63,
-    defending: 85,
-    physical: 86,
-  },
-  {
-    name: "Bremer",
-    pos: "CB",
-    nat: "Brazil",
-    club: "Juventus",
-    overall: 86,
-    pace: 81,
-    shooting: 43,
-    passing: 72,
-    dribbling: 65,
-    defending: 84,
-    physical: 83,
-  },
-  {
-    name: "Viktor Gyökeres",
-    pos: "ST",
-    nat: "Sweden",
-    club: "Arsenal",
-    overall: 86,
-    pace: 84,
-    shooting: 88,
-    passing: 70,
-    dribbling: 82,
-    defending: 35,
-    physical: 86,
-  },
-  {
-    name: "Serhou Guirassy",
-    pos: "ST",
-    nat: "Guinea",
-    club: "Dortmund",
-    overall: 87,
-    pace: 80,
-    shooting: 86,
-    passing: 64,
-    dribbling: 78,
-    defending: 30,
-    physical: 82,
-  },
-  {
-    name: "Ryan Gravenberch",
-    pos: "CDM",
-    nat: "Netherlands",
-    club: "Liverpool",
-    overall: 86,
-    pace: 81,
-    shooting: 70,
-    passing: 80,
-    dribbling: 84,
-    defending: 78,
-    physical: 78,
-  },
-  {
-    name: "Dominik Szoboszlai",
-    pos: "CAM",
-    nat: "Hungary",
-    club: "Liverpool",
-    overall: 86,
-    pace: 80,
-    shooting: 81,
-    passing: 85,
-    dribbling: 84,
-    defending: 62,
-    physical: 78,
-  },
-  {
-    name: "Victor Osimhen",
-    pos: "ST",
-    nat: "Nigeria",
-    club: "Galatasaray",
-    overall: 86,
-    pace: 90,
-    shooting: 86,
-    passing: 65,
-    dribbling: 82,
-    defending: 25,
-    physical: 85,
-  },
-  {
-    name: "Federico Dimarco",
-    pos: "LB",
-    nat: "Italy",
-    club: "Inter Milan",
-    overall: 86,
-    pace: 78,
-    shooting: 74,
-    passing: 84,
-    dribbling: 80,
-    defending: 80,
-    physical: 75,
-  },
-  {
-    name: "Hakan Çalhanoğlu",
-    pos: "CM",
-    nat: "Turkey",
-    club: "Inter Milan",
-    overall: 86,
-    pace: 65,
-    shooting: 82,
-    passing: 88,
-    dribbling: 85,
-    defending: 65,
-    physical: 75,
-  },
-  {
-    name: "Désiré Doué",
-    pos: "RW",
-    nat: "France",
-    club: "PSG",
-    overall: 86,
-    pace: 84,
-    shooting: 80,
-    passing: 78,
-    dribbling: 89,
-    defending: 52,
-    physical: 76,
-  },
-  {
-    name: "Lionel Messi",
-    pos: "CAM",
-    nat: "Argentina",
-    club: "Inter Miami",
-    overall: 86,
-    pace: 77,
-    shooting: 85,
-    passing: 86,
-    dribbling: 89,
-    defending: 34,
-    physical: 66,
-  },
-  {
-    name: "Jules Koundé",
-    pos: "RB",
-    nat: "France",
-    club: "FC Barcelona",
-    overall: 86,
-    pace: 84,
-    shooting: 55,
-    passing: 74,
-    dribbling: 78,
-    defending: 83,
-    physical: 85,
-  },
-  {
-    name: "Robert Lewandowski",
-    pos: "ST",
-    nat: "Poland",
-    club: "FC Barcelona",
-    overall: 86,
-    pace: 71,
-    shooting: 88,
-    passing: 78,
-    dribbling: 83,
-    defending: 48,
-    physical: 83,
-  },
-  {
-    name: "Julián Álvarez",
-    pos: "ST",
-    nat: "Argentina",
-    club: "Atletico Madrid",
-    overall: 86,
-    pace: 86,
-    shooting: 86,
-    passing: 83,
-    dribbling: 87,
-    defending: 63,
-    physical: 82,
-  },
-];
-
-// SQUAD_POOL: real players with verified overall in 80-82 range
-const SQUAD_POOL = [
-  { name: "Madueke", pos: "RW", nat: "England", club: "Arsenal", overall: 80 },
-  {
-    name: "Gabriel Martinelli",
-    pos: "LW",
-    nat: "Brazil",
-    club: "Arsenal",
-    overall: 81,
-  },
-   {
-    name: "Lucas Chevalier",
-    pos: "GK",
-    nat: "France",
-    club: "PSG",
-    overall: 82,
-  },
-   {
-    name: "Matvey Safonov",
-    pos: "GK",
-    nat: "Russia",
-    club: "PSG",
-    overall: 82,
-  },
-   {
-    name: "Dean Henderson",
-    pos: "GK",
-    nat: "England",
-    club: "Crystal Palace",
-    overall: 82,
-  },
-   {
-    name: "Álex Remiro",
-    pos: "GK",
-    nat: "Spain",
-    club: "Real Sociedad",
-    overall: 82,
-  },
-   {
-    name: "Alex Meret",
-    pos: "GK",
-    nat: "Italy",
-    club: "Napoli",
-    overall: 82,
-  },
-   {
-    name: "Wladimiro Falcone",
-    pos: "GK",
-    nat: "Italy",
-    club: "Lecce",
-    overall: 82,
-  },
-   {
-    name: "Manuel Neuer",
-    pos: "GK",
-    nat: "Germany",
-    club: "Bayern Munchen",
-    overall: 82,
-  },
-   {
-    name: "Guglielmo Vicario",
-    pos: "GK",
-    nat: "Italy",
-    club: "Tottenham",
-    overall: 81,
-  },
-   {
-    name: "Sam Lammens",
-    pos: "GK",
-    nat: "Belgium",
-    club: "Manchester United",
-    overall: 81,
-  },
-   {
-    name: "Michele di Gregorio",
-    pos: "GK",
-    nat: "Italy",
-    club: "Juventus",
-    overall: 81,
-  },
-   {
-    name: "Édouard Mendy",
-    pos: "GK",
-    nat: "Senegal",
-    club: "Al Ahli",
-    overall: 81,
-  },
-   {
-    name: "Koen Casteels",
-    pos: "GK",
-    nat: "Belgium",
-    club: "Al Qadsiah",
-    overall: 82,
-  },
-  {
-    name: "Jurriën Timber",
-    pos: "RB",
-    nat: "Netherlands",
-    club: "Arsenal",
-    overall: 82,
-  },
-  {
-    name: "Gabriel Jesus",
-    pos: "ST",
-    nat: "Brazil",
-    club: "Arsenal",
-    overall: 80,
-  },
-  {
-    name: "Matthijs de Ligt",
-    pos: "CB",
-    nat: "Netherlands",
-    club: "Manchester Utd",
-    overall: 82,
-  },
-  {
-    name: "Lisandro Martínez",
-    pos: "CB",
-    nat: "Argentina",
-    club: "Manchester Utd",
-    overall: 81,
-  },
-  {
-    name: "Antony",
-    pos: "RW",
-    nat: "Brazil",
-    club: "Manchester Utd",
-    overall: 81,
-  },
-  {
-    name: "Casemiro",
-    pos: "CDM",
-    nat: "Brazil",
-    club: "Manchester Utd",
-    overall: 82,
-  },
-  {
-    name: "Harry Maguire",
-    pos: "CB",
-    nat: "England",
-    club: "Manchester Utd",
-    overall: 80,
-  },
-  {
-    name: "Jadon Sancho",
-    pos: "LW",
-    nat: "England",
-    club: "Manchester Utd",
-    overall: 80,
-  },
-  {
-    name: "Noussair Mazraoui",
-    pos: "RB",
-    nat: "Morocco",
-    club: "Manchester Utd",
-    overall: 80,
-  },
-  {
-    name: "Benjamin Šeško",
-    pos: "ST",
-    nat: "Slovenia",
-    club: "Manchester Utd",
-    overall: 80,
-  },
-  {
-    name: "André Onana",
-    pos: "GK",
-    nat: "Cameroon",
-    club: "Manchester Utd",
-    overall: 80,
-  },
-  {
-    name: "Andy Robertson",
-    pos: "LB",
-    nat: "Scotland",
-    club: "Liverpool",
-    overall: 82,
-  },
-  {
-    name: "Milos Kerkez",
-    pos: "LB",
-    nat: "Hungary",
-    club: "Liverpool",
-    overall: 82,
-  },
-  {
-    name: "Federico Chiesa",
-    pos: "RW",
-    nat: "Italy",
-    club: "Liverpool",
-    overall: 81,
-  },
-  {
-    name: "Carlos Augusto",
-    pos: "LB",
-    nat: "Brazil",
-    club: "Inter Milan",
-    overall: 81,
-  },
-  {
-    name: "Matteo Darmian",
-    pos: "RB",
-    nat: "Italy",
-    club: "Inter Milan",
-    overall: 81,
-  },
-  {
-    name: "Davide Frattesi",
-    pos: "CM",
-    nat: "Italy",
-    club: "Inter Milan",
-    overall: 81,
-  },
-  {
-    name: "Youssouf Fofana",
-    pos: "CDM",
-    nat: "France",
-    club: "AC Milan",
-    overall: 81,
-  },
-  {
-    name: "Kai Havertz",
-    pos: "ST",
-    nat: "Germany",
-    club: "Arsenal",
-    overall: 82,
-  },
-  {
-    name: "Xavi Simons",
-    pos: "CAM",
-    nat: "Netherlands",
-    club: "Tottenham",
-    overall: 82,
-  },
-  {
-    name: "Pape Matar Sarr",
-    pos: "CDM",
-    nat: "Senegal",
-    club: "Tottenham",
-    overall: 80,
-  },
-  {
-    name: "Micky van de Ven",
-    pos: "CB",
-    nat: "Netherlands",
-    club: "Tottenham",
-    overall: 82,
-  },
-  {
-    name: "Jeremie Frimpong",
-    pos: "RB",
-    nat: "Netherlands",
-    club: "Liverpool",
-    overall: 82,
-  },
-  {
-    name: "Fikayo Tomori",
-    pos: "CB",
-    nat: "England",
-    club: "AC Milan",
-    overall: 81,
-  },
-  {
-    name: "Kenan Yıldız",
-    pos: "CAM",
-    nat: "Turkey",
-    club: "Juventus",
-    overall: 82,
-  },
-  { name: "Nico Paz", pos: "CAM", nat: "Argentina", club: "Como", overall: 82 },
-  { name: "Éderson", pos: "CM", nat: "Brazil", club: "Atalanta", overall: 82 },
-  {
-    name: "Charles De Ketelaere",
-    pos: "CAM",
-    nat: "Belgium",
-    club: "Atalanta",
-    overall: 82,
-  },
-  {
-    name: "Oihan Sancet",
-    pos: "CAM",
-    nat: "Spain",
-    club: "Athletic Club",
-    overall: 82,
-  },
-  {
-    name: "Orkun Kökçü",
-    pos: "CM",
-    nat: "Turkey",
-    club: "Besiktas",
-    overall: 82,
-  },
-  {
-    name: "Matteo Guendouzi",
-    pos: "CM",
-    nat: "France",
-    club: "Fenerbahce",
-    overall: 82,
-  },
-  {
-    name: "Corentin Tolisso",
-    pos: "CM",
-    nat: "France",
-    club: "Olympique Lyonnais",
-    overall: 82,
-  },
-  {
-    name: "Rafa Silva",
-    pos: "CAM",
-    nat: "Portugal",
-    club: "Benfica",
-    overall: 82,
-  },
-  {
-    name: "Mateo Kovačić",
-    pos: "CM",
-    nat: "Croatia",
-    club: "Manchester City",
-    overall: 82,
-  },
-  {
-    name: "Konstantinos Fortounis",
-    pos: "CAM",
-    nat: "Greece",
-    club: "Al Khaleej",
-    overall: 82,
-  },
-  {
-    name: "Joey Veerman",
-    pos: "CM",
-    nat: "Netherlands",
-    club: "PSV",
-    overall: 81,
-  },
-  {
-    name: "Eduardo Camavinga",
-    pos: "CM",
-    nat: "France",
-    club: "Real Madrid",
-    overall: 81,
-  },
-  {
-    name: "Khéphren Thuram",
-    pos: "CM",
-    nat: "France",
-    club: "Juventus",
-    overall: 81,
-  },
-  {
-    name: "João Félix",
-    pos: "CAM",
-    nat: "Portugal",
-    club: "Al Nassr",
-    overall: 81,
-  },
-  { name: "Luis Milla", pos: "CM", nat: "Spain", club: "Getafe", overall: 81 },
-  {
-    name: "Christoph Baumgartner",
-    pos: "CAM",
-    nat: "Austria",
-    club: "RB Leipzig",
-    overall: 81,
-  },
-  {
-    name: "Morgan Gibbs-White",
-    pos: "CAM",
-    nat: "England",
-    club: "Nottingham Forest",
-    overall: 81,
-  },
-  {
-    name: "Christopher Nkunku",
-    pos: "CAM",
-    nat: "France",
-    club: "AC Milan",
-    overall: 81,
-  },
-  {
-    name: "Pablo Fornals",
-    pos: "CM",
-    nat: "Spain",
-    club: "Real Betis",
-    overall: 81,
-  },
-  {
-    name: "Giovani Lo Celso",
-    pos: "CAM",
-    nat: "Argentina",
-    club: "Real Betis",
-    overall: 81,
-  },
-  {
-    name: "Joelinton",
-    pos: "CM",
-    nat: "Brazil",
-    club: "Newcastle",
-    overall: 81,
-  },
-  {
-    name: "Andrej Kramarić",
-    pos: "CAM",
-    nat: "Croatia",
-    club: "TSG Hoffenheim",
-    overall: 81,
-  },
-  {
-    name: "Ricardo Horta",
-    pos: "CAM",
-    nat: "Portugal",
-    club: "Sporting Clube de Praga",
-    overall: 81,
-  },
-  {
-    name: "Anderson Talisca",
-    pos: "CAM",
-    nat: "Brazil",
-    club: "Fenerbahce",
-    overall: 81,
-  },
-  {
-    name: "Otávio",
-    pos: "CM",
-    nat: "Portugal",
-    club: "Al Qadsiah FC",
-    overall: 81,
-  },
-  {
-    name: "Marten de Roon",
-    pos: "CM",
-    nat: "Netherlands",
-    club: "Atalanta",
-    overall: 81,
-  },
-  {
-    name: "Bryan Cristante",
-    pos: "CM",
-    nat: "Italy",
-    club: "Roma",
-    overall: 81,
-  },
-  {
-    name: "Leandro Paredes",
-    pos: "CM",
-    nat: "Argentina",
-    club: "Boca Juniors",
-    overall: 81,
-  },
-  {
-    name: "Hans Vanaken",
-    pos: "CAM",
-    nat: "Belgium",
-    club: "Club Brugge",
-    overall: 81,
-  },
-  {
-    name: "Koke",
-    pos: "CM",
-    nat: "Spain",
-    club: "Atlético Madrid",
-    overall: 81,
-  },
-  {
-    name: "Mikel Jauregizar",
-    pos: "CM",
-    nat: "Spain",
-    club: "Athletic Club",
-    overall: 81,
-  },
-  {
-    name: "Andrey Santos",
-    pos: "CM",
-    nat: "Brazil",
-    club: "Chelsea",
-    overall: 81,
-  },
-  {
-    name: "Gabriel Sara",
-    pos: "CM",
-    nat: "Brazil",
-    club: "Galatasaray",
-    overall: 80,
-  },
-  {
-    name: "Maghnes Akliouche",
-    pos: "CAM",
-    nat: "France",
-    club: "AS Monaco",
-    overall: 80,
-  },
-  {
-    name: "Ismael Saibari",
-    pos: "CAM",
-    nat: "Morocco",
-    club: "PSV",
-    overall: 80,
-  },
-  {
-    name: "Piotr Zieliński",
-    pos: "CAM",
-    nat: "Poland",
-    club: "Inter Milan",
-    overall: 80,
-  },
-  {
-    name: "Pau Torres",
-    pos: "CB",
-    nat: "Spain",
-    club: "Aston Villa",
-    overall: 81,
-  },
-  {
-    name: "Marc Guéhi",
-    pos: "CB",
-    nat: "England",
-    club: "Crystal Palace",
-    overall: 82,
-  },
-  {
-    name: "Pedro Porro",
-    pos: "RB",
-    nat: "Spain",
-    club: "Tottenham",
-    overall: 82,
-  },
-  {
-    name: "Cristian Romero",
-    pos: "CB",
-    nat: "Argentina",
-    club: "Tottenham",
-    overall: 82,
-  },
-  {
-    name: "Yassine Bounou",
-    pos: "GK",
-    nat: "Morocco",
-    club: "Al-Hilal",
-    overall: 82,
-  },
-  {
-    name: "Aymeric Laporte",
-    pos: "CB",
-    nat: "Spain",
-    club: "Al-Nassr",
-    overall: 82,
-  },
-  {
-    name: "Robin Le Normand",
-    pos: "CB",
-    nat: "Spain",
-    club: "Atlético Madrid",
-    overall: 81,
-  },
-  {
-    name: "Dean Huijsen",
-    pos: "CB",
-    nat: "Spain",
-    club: "Real Madrid",
-    overall: 81,
-  },
-];
 
 // ─── ECONOMY ─────────────────────────────────────────────────────────────────
 const BUDGET = 100;
@@ -2415,16 +219,16 @@ function propagateBracketWinners(rounds) {
 }
 // Position groups for fallback when exact position is exhausted
 const POS_GROUP = {
-  GK: ["GK"],
-  CB: ["CB"],
-  RB: ["RB", "CB"],
-  LB: ["LB", "CB"],
-  CDM: ["CDM", "CM"],
-  CM: ["CM", "CDM"],
-  CAM: ["CAM", "CM"],
-  RW: ["RW", "LW"],
-  LW: ["LW", "RW"],
-  ST: ["ST"],
+  POR: ["POR"],
+  DFC: ["DFC"],
+  LD: ["LD", "DFC"],
+  LI: ["LI", "DFC"],
+  MCD: ["MCD", "MC"],
+  MC: ["MC", "MCD"],
+  MCO: ["MCO", "MC"],
+  ED: ["ED", "EI"],
+  EI: ["EI", "ED"],
+  DC: ["DC"],
 };
 function generateSquad(idx, usedStars, usedNames) {
   const availableStars = DRAFT_STARS.filter((p) => !usedStars.includes(p.name));
@@ -2435,17 +239,17 @@ function generateSquad(idx, usedStars, usedNames) {
       : shuffle(DRAFT_STARS)[0];
 
   const REQUIRED = [
-    "GK",
-    "CB",
-    "CB",
-    "RB",
-    "LB",
-    "CDM",
-    "CM",
-    "CAM",
-    "RW",
-    "LW",
-    "ST",
+    "POR",
+    "DFC",
+    "DFC",
+    "LD",
+    "LI",
+    "MCD",
+    "MC",
+    "MCO",
+    "ED",
+    "EI",
+    "DC",
   ];
   const squad = [];
   const taken = [...usedNames, star.name];
@@ -2523,10 +327,10 @@ function fmtM(n) {
   return `${n.toFixed(1)}M€`;
 }
 function posColor(pos) {
-  if (pos === "GK") return "#e67e22";
-  if (["CB", "RB", "LB"].includes(pos)) return "#2980b9";
-  if (["CM", "CAM", "CDM"].includes(pos)) return "#27ae60";
-  if (["ST", "RW", "LW", "CF"].includes(pos)) return "#c0392b";
+  if (pos === "POR") return "#e67e22";
+  if (["DFC", "LD", "LI"].includes(pos)) return "#2980b9";
+  if (["MC", "MCO", "MCD"].includes(pos)) return "#27ae60";
+  if (["DC", "ED", "EI", "CF"].includes(pos)) return "#c0392b";
   return "#7f8c8d";
 }
 function ratingColor(r) {
@@ -2585,7 +389,13 @@ function hasIncompleteSquad(team) {
 }
 // ─── APP ─────────────────────────────────────────────────────────────────────
 export default function FifaLiga() {
-  const [view, setView] = useState(VIEWS.HOME);
+  const [view, setView] = useState(VIEWS.LOGIN);
+
+  // ── Authentication state ──
+  const [authUser, setAuthUser] = useState(null); // Firebase user object | null
+  const [userProfile, setUserProfile] = useState(null); // { displayName, email, leagues: [{code, teamName}] }
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
 
   // Local-device state (NOT shared): which league am I in, am I the admin, which team is "mine"
   const [leagueCode, setLeagueCode] = useState(null);
@@ -2659,6 +469,45 @@ export default function FifaLiga() {
   // ── Storage key helpers ──
   const leagueKey = (code) => `league_${code}`;
   const deviceKey = "fifaLigaDevice"; // local, not shared: { leagueCode, isAdmin, myTeamName }
+
+  // ── Step 0: listen for Firebase auth state (persists across visits) ──
+  useEffect(() => {
+    const unsubscribe = onAuthChange(async (user) => {
+      setAuthUser(user);
+      if (user) {
+        const profile = await ensureUserProfile(user);
+        setUserProfile(profile);
+        // Land on the leagues selector if they have any saved leagues,
+        // otherwise the regular create/join screen.
+        setView(profile?.leagues?.length > 0 ? VIEWS.MY_LEAGUES : VIEWS.HOME);
+      } else {
+        setUserProfile(null);
+        setView(VIEWS.LOGIN);
+      }
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    setAuthError("");
+    try {
+      await signInWithGoogle();
+      // onAuthChange above will pick up the new user and redirect automatically.
+    } catch (e) {
+      setAuthError("No se pudo iniciar sesión con Google. Inténtalo de nuevo.");
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOutUser();
+    setLeagueCode(null);
+    setIsAdmin(false);
+    setMyTeamName(null);
+    setTeams([]);
+    setFixtures([]);
+    setStarted(false);
+  };
 
   // ── Step 1: load local device info (which league am I in, am I admin) ──
   useEffect(() => {
@@ -2741,7 +590,8 @@ export default function FifaLiga() {
   // ── Real-time sync: subscribe to the shared league document.
   // Replaces the old 8s polling — Firestore pushes updates instantly
   // whenever any player (or the admin) writes to the league, so bids,
-  // new teams joining, accepted offers, etc. all appear live for everyone.
+  // new teams joining, accepted offers, tournament results, etc. all
+  // appear live for everyone.
   useEffect(() => {
     if (!leagueCode) return;
     const unsubscribe = storage.subscribe(
@@ -2971,6 +821,7 @@ export default function FifaLiga() {
         setTeams(verifyState.teams || updatedTeams);
         setMyTeamName(name);
         await saveDevice({ myTeamName: name });
+        if (authUser) await addLeagueToProfile(authUser.uid, leagueCode, name);
         setHomeError("");
         setView(VIEWS.WAITING);
         return;
@@ -3129,11 +980,19 @@ export default function FifaLiga() {
   };
 
   const startPlayerPick = () => {
+    const usedNames = teams.flatMap((t) => allPlayersOf(t).map((p) => p.name));
     const eligible = MARKET_POOL.filter(
       (p) =>
         p.overall >= PLAYER_PICK_MIN_OVERALL &&
-        p.overall <= PLAYER_PICK_MAX_OVERALL,
+        p.overall <= PLAYER_PICK_MAX_OVERALL &&
+        !usedNames.includes(p.name),
     );
+    if (eligible.length < 3) {
+      showToast(
+        "No quedan suficientes jugadores 87-89 libres para el Player Pick. Elige el premio en dinero.",
+      );
+      return;
+    }
     const cards = shuffle(eligible).slice(0, 3);
     const prize = {
       claimed: false,
@@ -3909,12 +1768,12 @@ export default function FifaLiga() {
     .slice(0, 10);
 
   // ── Zamora ranking: each team's representative goalkeeper (the star if
-  // they're a GK, otherwise the highest-overall GK in the squad), ranked by
+  // they're a POR, otherwise the highest-overall POR in the squad), ranked by
   // fewest goals conceded by their team. Lowest ga wins the Zamora.
   const zamoraRanking = teams
     .map((t) => {
       const allP = allPlayersOf(t);
-      const gks = allP.filter((p) => (p.pos || p.position) === "GK");
+      const gks = allP.filter((p) => (p.pos || p.position) === "POR");
       const keeper =
         gks.length > 0
           ? [...gks].sort((a, b) => b.overall - a.overall)[0]
@@ -4383,6 +2242,170 @@ export default function FifaLiga() {
           </div>
         )}
 
+        {/* ══ LOGIN ══ */}
+        {view === VIEWS.LOGIN && (
+          <div style={{ textAlign: "center", padding: "60px 20px" }}>
+            {authLoading ? (
+              <>
+                <div style={{ fontSize: 24, marginBottom: 10 }}>⚽</div>
+                <p style={{ color: "#4a6a8a", fontSize: 13 }}>
+                  Cargando sesión...
+                </p>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 40, marginBottom: 14 }}>⚽</div>
+                <h2
+                  style={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 21,
+                    marginBottom: 8,
+                  }}
+                >
+                  FIFA Liga
+                </h2>
+                <p style={{ color: "#5a7a9a", fontSize: 14, marginBottom: 24 }}>
+                  Inicia sesión para guardar tus ligas y volver a entrar cuando
+                  quieras.
+                </p>
+                {authError && (
+                  <div
+                    style={{
+                      background: "#5a1a1a",
+                      border: "1px solid #c0392b",
+                      borderRadius: 10,
+                      padding: "10px 14px",
+                      color: "#fff",
+                      fontSize: 13,
+                      marginBottom: 16,
+                    }}
+                  >
+                    ⚠️ {authError}
+                  </div>
+                )}
+                <button
+                  onClick={handleGoogleSignIn}
+                  style={{
+                    ...btn("#fff"),
+                    color: "#1a1a1a",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    maxWidth: 280,
+                    margin: "0 auto",
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18">
+                    <path
+                      fill="#4285F4"
+                      d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.85 2.08-1.81 2.72v2.26h2.92c1.71-1.57 2.69-3.88 2.69-6.62z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.33C2.44 15.98 5.48 18 9 18z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M3.97 10.71c-.18-.54-.28-1.11-.28-1.71s.1-1.17.28-1.71V4.96H.96A8.99 8.99 0 0 0 0 9c0 1.45.35 2.83.96 4.04l3.01-2.33z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"
+                    />
+                  </svg>
+                  Continuar con Google
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ══ MY_LEAGUES (account's saved leagues selector) ══ */}
+        {view === VIEWS.MY_LEAGUES && (
+          <div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 6,
+              }}
+            >
+              <h2
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 21,
+                  margin: 0,
+                }}
+              >
+                Tus Ligas
+              </h2>
+              <button
+                onClick={handleSignOut}
+                style={{
+                  background: "transparent",
+                  border: "1px solid #1a3050",
+                  color: "#5a7a9a",
+                  borderRadius: 8,
+                  padding: "5px 10px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                Salir
+              </button>
+            </div>
+            <p style={{ color: "#5a7a9a", fontSize: 13, marginBottom: 18 }}>
+              {userProfile?.displayName}, elige una liga para continuar.
+            </p>
+            {(userProfile?.leagues || []).map((l) => (
+              <div
+                key={l.code}
+                onClick={async () => {
+                  setLeagueCode(l.code);
+                  setMyTeamName(l.teamName);
+                  await saveDevice({
+                    leagueCode: l.code,
+                    myTeamName: l.teamName,
+                  });
+                  setStorageLoaded(false);
+                }}
+                style={{
+                  ...card,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>
+                    {l.teamName}
+                  </div>
+                  <div style={{ color: "#4a6a8a", fontSize: 12 }}>
+                    Código: {l.code}
+                  </div>
+                </div>
+                <span style={{ color: "#5a7a9a", fontSize: 18 }}>›</span>
+              </div>
+            ))}
+            <button
+              onClick={() => setView(VIEWS.HOME)}
+              style={{
+                ...btn("transparent"),
+                border: "1px solid #1a3050",
+                color: "#5a7a9a",
+                marginTop: 10,
+              }}
+            >
+              + Unirme a otra liga / Crear una nueva
+            </button>
+          </div>
+        )}
+
         {/* ══ HOME (create or join a league) ══ */}
         {view === VIEWS.HOME && !deviceLoaded && (
           <div
@@ -4398,16 +2421,41 @@ export default function FifaLiga() {
         )}
         {view === VIEWS.HOME && deviceLoaded && (
           <div>
-            <h2
+            <div
               style={{
-                color: "#fff",
-                fontWeight: 700,
-                fontSize: 21,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
                 marginBottom: 6,
               }}
             >
-              FIFA Liga
-            </h2>
+              <h2
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 21,
+                  margin: 0,
+                }}
+              >
+                FIFA Liga
+              </h2>
+              {userProfile?.leagues?.length > 0 && (
+                <button
+                  onClick={() => setView(VIEWS.MY_LEAGUES)}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid #1a3050",
+                    color: "#5a9fd4",
+                    borderRadius: 8,
+                    padding: "5px 10px",
+                    cursor: "pointer",
+                    fontSize: 12,
+                  }}
+                >
+                  ← Tus ligas
+                </button>
+              )}
+            </div>
             <p style={{ color: "#5a7a9a", fontSize: 14, marginBottom: 24 }}>
               Crea una liga nueva o únete a una con el código que te hayan
               compartido.
@@ -4463,6 +2511,20 @@ export default function FifaLiga() {
                 Buscar liga
               </button>
             </div>
+            <button
+              onClick={handleSignOut}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#5a7a9a",
+                cursor: "pointer",
+                fontSize: 12,
+                marginTop: 16,
+                textDecoration: "underline",
+              }}
+            >
+              Cerrar sesión
+            </button>
           </div>
         )}
 

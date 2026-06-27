@@ -7,6 +7,16 @@ con un simple `git push`.
 
 ---
 
+## 1b. Activar el inicio de sesión con Google
+
+1. En la consola de Firebase, ve a **Compilación → Authentication**.
+2. Pulsa **"Comenzar"** si es la primera vez.
+3. En la pestaña **Sign-in method**, pulsa **"Agregar nuevo proveedor"** → elige **Google**.
+4. Activa el interruptor, elige un correo de soporte del proyecto, y pulsa **Guardar**.
+5. Ve a la pestaña **Settings** dentro de Authentication → sección **Authorized domains** → comprueba que tu dominio de Vercel (`tu-proyecto.vercel.app`) aparece en la lista. Si no, pulsa **"Add domain"** y añádelo.
+
+---
+
 ## 1. Crear el proyecto de Firebase (gratis)
 
 1. Ve a https://console.firebase.google.com y haz clic en **"Crear un proyecto"**.
@@ -39,6 +49,9 @@ service cloud.firestore {
     }
     match /device_state/{docId} {
       allow read, write: if true;
+    }
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
   }
 }
