@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { storage } from "./firebaseStorage";
-import Flag from "country-flag-icons/react/3x2";
+import * as Flags from "country-flag-icons/react/3x2";
 import {
   signInWithGoogle,
   signOutUser,
@@ -2288,16 +2288,13 @@ export default function FifaLiga() {
 
     if (!code) return <span>🌍</span>;
 
-    const Component = Flag[code];
+    const Key = code.toUpperCase();
 
-    return Component ? (
-      <Component
-        title={country}
-        style={{ width: 16, height: 12, display: "inline-block" }}
-      />
-    ) : (
-      <span>🌍</span>
-    );
+    const Component = Flags[Key];
+
+    if (!Component) return <span>🌍</span>;
+
+    return <Component title={country} style={{ width: 16, height: 12 }} />;
   };
 
   return (
