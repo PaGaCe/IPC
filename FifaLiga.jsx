@@ -3756,14 +3756,16 @@ export default function FifaLiga() {
                           de {p.ownerTeam}
                         </div>
                       </div>
-                      {p.ownerTeam !== myTeamName && (
-                        <button
-                          onClick={() => openOfferModal(p.ownerTeam, p)}
-                          style={btn("#1a5f96")}
-                        >
-                          Ofertar
-                        </button>
-                      )}
+                      <div>
+                        {p.ownerTeam !== myTeamName && (
+                          <button
+                            onClick={() => openOfferModal(p.ownerTeam, p)}
+                            style={btn("#1a5f96")}
+                          >
+                            Ofertar
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
