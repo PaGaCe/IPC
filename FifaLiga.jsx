@@ -2286,6 +2286,10 @@ export default function FifaLiga() {
   const CountryFlag = ({ country }) => {
     const code = getCountryCode(country);
 
+    console.log("RAW INPUT:", country);
+    console.log("RESOLVED CODE:", code);
+    console.log("FLAG EXISTS?:", Flags[code?.toUpperCase()]);
+
     if (!code) return <span>🌍</span>;
 
     const Key = code.toUpperCase();
