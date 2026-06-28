@@ -2081,7 +2081,7 @@ export default function FifaLiga() {
           }}
         >
           <span>
-            <CountryFlag code={p.nat} />
+            <CountryFlag country={p.nat} />
           </span>
           <span>•</span>
           <span>🏟️ {p.club}</span>
