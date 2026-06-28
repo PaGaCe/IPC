@@ -1665,6 +1665,18 @@ export default function FifaLiga() {
     );
     save({ offers: newOffers, notifications: newNotifications });
   };
+  const cancelOffer = (offer) => {
+    const newOffers = offers.map((o) =>
+      o.offerId === offer.offerId ? { ...o, status: "cancelled" } : o,
+    );
+    setOffers(newOffers);
+
+    showToast("Oferta cancelada", "success");
+
+    save({
+      offers: newOffers,
+    });
+  };
 
   // ── Results with scorers/assists/mvp ──
   const openResult = (idx) => {
@@ -3923,6 +3935,17 @@ export default function FifaLiga() {
                             </span>
                           </div>
                         </div>
+                        <button
+                          onClick={() => cancelOffer(o)}
+                          style={{
+                            ...btn("#b95a1b"),
+                            width: "auto",
+                            padding: "7px 12px",
+                            fontSize: 12,
+                          }}
+                        >
+                          Cancelar oferta
+                        </button>
                         <span style={{ color: "#5a7a9a", fontSize: 11 }}>
                           Esperando respuesta...
                         </span>
