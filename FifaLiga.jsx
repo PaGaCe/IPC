@@ -2246,7 +2246,7 @@ export default function FifaLiga() {
     );
   };
 
-  export const getCountryCode = (name) => {
+  const getCountryCode = (name) => {
     if (!name) return null;
 
     const clean = name.trim();
