@@ -398,6 +398,7 @@ function allPlayersOf(team) {
   return [team?.squad?.star, ...(team?.squad?.squad || [])].filter(Boolean);
 }
 const MIN_SQUAD_TO_PLAY = 18;
+const ITEMS_PER_PAGE = 5;
 function hasIncompleteSquad(team) {
   return allPlayersOf(team).length < MIN_SQUAD_TO_PLAY;
 }
@@ -461,6 +462,12 @@ export default function FifaLiga() {
 
   const [offers, setOffers] = useState([]); // [{offerId, fromTeam, toTeam, player, amount, status, createdAt}]
   const [notifications, setNotifications] = useState([]); // [{id, type, text, createdAt, read}]
+  const [page, setPage] = useState(1);
+  const totalPages = Math.ceil(notifications.length / ITEMS_PER_PAGE);
+  const visibleNotifications = notifications.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE,
+  );
   const [clauseConfirm, setClauseConfirm] = useState(null);
   const [discardConfirm, setDiscardConfirm] = useState(null);
   const [clauseInvestInput, setClauseInvestInput] = useState({});
@@ -4073,16 +4080,42 @@ export default function FifaLiga() {
                     Sin notificaciones todavía.
                   </p>
                 ) : (
-                  notifications.slice(0, 15).map((n) => (
-                    <div key={n.id} style={{ ...card, padding: "10px 14px" }}>
-                      <div style={{ fontSize: 13 }}>{n.text}</div>
-                      <div
-                        style={{ fontSize: 10, color: "#4a6a8a", marginTop: 4 }}
-                      >
-                        {new Date(n.createdAt).toLocaleString()}
+                  <>
+                    {visibleNotifications.map((n) => (
+                      <div key={n.id} style={{ ...card, padding: "10px 14px" }}>
+                        <div style={{ fontSize: 13 }}>{n.text}</div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "#4a6a8a",
+                            marginTop: 4,
+                          }}
+                        >
+                          {new Date(n.createdAt).toLocaleString()}
+                        </div>
                       </div>
+                    ))}
+
+                    <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                      <button
+                        disabled={page === 1}
+                        onClick={() => setPage((p) => p - 1)}
+                      >
+                        Anterior
+                      </button>
+
+                      <span>
+                        Página {page} de {totalPages}
+                      </span>
+
+                      <button
+                        disabled={page === totalPages}
+                        onClick={() => setPage((p) => p + 1)}
+                      >
+                        Siguiente
+                      </button>
                     </div>
-                  ))
+                  </>
                 )}
 
                 {resolvedOffers.length > 0 && (
