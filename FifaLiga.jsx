@@ -2246,24 +2246,58 @@ export default function FifaLiga() {
     );
   };
 
-  const getCountryCode = (name) => {
-    if (!name) return null;
+  const getCountryCode = (input) => {
+    if (!input) return null;
 
-    const clean = name.trim();
+    const normalized = input.toString().trim().toLowerCase();
 
-    return countries.getAlpha2Code(clean, "en");
+    if (FOOTBALL_COUNTRY_MAP[normalized]) {
+      return FOOTBALL_COUNTRY_MAP[normalized];
+    }
+
+    const iso = countries.getAlpha2Code(input.trim(), "en");
+
+    return iso || null;
   };
 
-  const CountryFlag = ({ countryName }) => {
-    const code = getCountryCode(countryName);
+  const FOOTBALL_COUNTRY_MAP = {
+    england: "GB",
+    uk: "GB",
+    "united kingdom": "GB",
+    scotland: "GB",
+    wales: "GB",
+    "northern ireland": "GB",
+    usa: "US",
+    "united states": "US",
+    "ivory coast": "CI",
+    "south korea": "KR",
+    "north korea": "KP",
+    russia: "RU",
+    iran: "IR",
+    eng: "GB",
+    esp: "ES",
+    fra: "FR",
+    ger: "DE",
+    ita: "IT",
+    bra: "BR",
+    arg: "AR",
+  };
 
-    if (!code) return <span>🌍 {countryName}</span>;
+  const CountryFlag = ({ country }) => {
+    const code = getCountryCode(country);
+
+    if (!code) return <span>🌍</span>;
 
     const Component = Flag[code];
 
-    if (!Component) return <span>🌍 {code}</span>;
-
-    return <Component title={countryName} style={{ width: 16, height: 12 }} />;
+    return Component ? (
+      <Component
+        title={country}
+        style={{ width: 16, height: 12, display: "inline-block" }}
+      />
+    ) : (
+      <span>🌍</span>
+    );
   };
 
   return (
