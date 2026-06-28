@@ -2246,20 +2246,22 @@ export default function FifaLiga() {
     );
   };
 
-  const getCountryCode = (countryName) => {
-    if (!countryName) return null;
+  export const getCountryCode = (name) => {
+    if (!name) return null;
 
-    return countries.getAlpha2Code(countryName, "en");
+    const clean = name.trim();
+
+    return countries.getAlpha2Code(clean, "en");
   };
 
   const CountryFlag = ({ countryName }) => {
     const code = getCountryCode(countryName);
 
-    if (!code) return <span>🌍 countryName</span>;
+    if (!code) return <span>🌍 {countryName}</span>;
 
     const Component = Flag[code];
 
-    if (!Component) return <span>🌍 code</span>;
+    if (!Component) return <span>🌍 {code}</span>;
 
     return <Component title={countryName} style={{ width: 16, height: 12 }} />;
   };
