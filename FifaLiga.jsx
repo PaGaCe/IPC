@@ -3905,7 +3905,7 @@ export default function FifaLiga() {
                           ...card,
                           display: "flex",
                           gap: 10,
-                          alignItems: "center",
+                          alignItems: "flex-start",
                         }}
                       >
                         <div
@@ -3924,31 +3924,63 @@ export default function FifaLiga() {
                         >
                           {o.player.overall}
                         </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, fontSize: 14 }}>
-                            {o.player.name}
-                          </div>
-                          <div style={{ fontSize: 11, color: "#4a6a8a" }}>
-                            A {o.toTeam} · ofreciste{" "}
-                            <span style={{ color: "#f0c040", fontWeight: 700 }}>
-                              {fmtM(o.amount)}
-                            </span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => cancelOffer(o)}
+
+                        <div
                           style={{
-                            ...btn("#b95a1b"),
-                            width: "auto",
-                            padding: "7px 12px",
-                            fontSize: 12,
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                            minWidth: 0,
                           }}
                         >
-                          Cancelar oferta
-                        </button>
-                        <span style={{ color: "#5a7a9a", fontSize: 11 }}>
-                          Esperando respuesta...
-                        </span>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>
+                              {o.player.name}
+                            </div>
+
+                            <div style={{ fontSize: 11, color: "#4a6a8a" }}>
+                              A {o.toTeam} · ofreciste{" "}
+                              <span
+                                style={{ color: "#f0c040", fontWeight: 700 }}
+                              >
+                                {fmtM(o.amount)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: 8,
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: "#5a7a9a",
+                                fontSize: 11,
+                                fontStyle: "italic",
+                              }}
+                            >
+                              Esperando respuesta...
+                            </span>
+
+                            <button
+                              onClick={() => cancelOffer(o)}
+                              style={{
+                                ...btn("#b95a1b"),
+                                width: "auto",
+                                padding: "6px 12px",
+                                fontSize: 12,
+                              }}
+                            >
+                              Cancelar oferta
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
