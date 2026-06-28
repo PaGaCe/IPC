@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { storage } from "./firebaseStorage";
+import Flag from "country-flag-icons/react/3x2";
 import {
   signInWithGoogle,
   signOutUser,
@@ -14,6 +15,11 @@ import {
   MARKET_POOL,
   LEGEND_POOL,
 } from "./PlayersPool";
+import countries from "i18n-iso-countries";
+
+import en from "i18n-iso-countries/langs/en.json";
+
+countries.registerLocale(en);
 
 // ─── VIEWS ──────────────────────────────────────────────────────────────────
 const VIEWS = {
@@ -1483,7 +1489,7 @@ export default function FifaLiga() {
       setClauseConfirm(null);
       return;
     }
-    executeTransfer(
+    const updatedTeams = executeTransfer(
       sellerTeamName,
       myTeamName,
       player,
@@ -1492,10 +1498,11 @@ export default function FifaLiga() {
     );
     setClauseConfirm(null);
     showToast(`¡Cláusula pagada! ${player.name} es tuyo`, "success");
-    addNotification(
+    const newNotifications = addNotification(
       `${myTeamName} pagó la cláusula de ${player.name} (${fmtM(clauseAmount)}) a ${sellerTeamName}.`,
       "clause",
     );
+    save({ teams: updatedTeams, notifications: newNotifications });
   };
 
   const executeTransfer = (
@@ -1505,7 +1512,7 @@ export default function FifaLiga() {
     amount,
     newClauseValue,
   ) => {
-    let updatedTeams = teams.map((t) => {
+    const updatedTeams = teams.map((t) => {
       if (t.name === sellerName) {
         const isStar = t.squad?.star?.id === player.id;
         return {
@@ -1538,7 +1545,7 @@ export default function FifaLiga() {
       return t;
     });
     setTeams(updatedTeams);
-    save({ teams: updatedTeams });
+    return updatedTeams;
   };
 
   const investInClause = (teamName, playerId) => {
@@ -1670,11 +1677,15 @@ export default function FifaLiga() {
       o.offerId === offer.offerId ? { ...o, status: "cancelled" } : o,
     );
     setOffers(newOffers);
-
     showToast("Oferta cancelada", "success");
+    const newNotifications = addNotification(
+      `${offer.fromTeam} se arrepintió de hacer la oferta de ${fmtM(offer.amount)} de ${offer.fromTeam} por ${offer.player.name}.`,
+      "offer",
+    );
 
     save({
       offers: newOffers,
+      notifications: newNotifications,
     });
   };
 
@@ -2066,10 +2077,12 @@ export default function FifaLiga() {
             fontSize: 12,
             color: "#5a7a9a",
             marginBottom: mode ? 6 : 0,
-            marginLeft: 46, // para alinearlo con el nombre (después del badge de posición)
+            marginLeft: 46,
           }}
         >
-          <span>🌍 {p.nat}</span>
+          <span>
+            <CountryFlag code={p.nat} />
+          </span>
           <span>•</span>
           <span>🏟️ {p.club}</span>
         </div>
@@ -2231,6 +2244,24 @@ export default function FifaLiga() {
           })()}
       </div>
     );
+  };
+
+  const getCountryCode = (countryName) => {
+    if (!countryName) return null;
+
+    return countries.getAlpha2Code(countryName, "en");
+  };
+
+  const CountryFlag = ({ countryName }) => {
+    const code = getCountryCode(countryName);
+
+    if (!code) return <span>🌍 countryName</span>;
+
+    const Component = Flag[code];
+
+    if (!Component) return <span>🌍 code</span>;
+
+    return <Component title={countryName} style={{ width: 16, height: 12 }} />;
   };
 
   return (

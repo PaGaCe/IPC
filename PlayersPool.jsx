@@ -627,7 +627,7 @@ exports.GLOBAL_POOL = [
   {
     name: "Patrik Schick",
     pos: "DC",
-    nat: "Czech Rep.",
+    nat: "Czech Republic",
     club: "Bayer Leverkusen",
     overall: 85,
     pace: 78,
@@ -2494,7 +2494,7 @@ exports.SQUAD_POOL = [
   {
     name: "Kim Min-jae",
     pos: "DFC",
-    nat: "Korea Republic",
+    nat: "South Korea",
     club: "Bayern Munich",
     overall: 82,
   },
@@ -2662,7 +2662,7 @@ exports.SQUAD_POOL = [
   {
     name: "Nicolas Pépé",
     pos: "ED",
-    nat: "Côte d'Ivoire",
+    nat: "Ivory Coast",
     club: "Villarreal",
     overall: 81,
   },
@@ -3083,7 +3083,7 @@ exports.SQUAD_POOL = [
   {
     name: "Yan Diomandé",
     pos: "ED",
-    nat: "Côte d'Ivoire",
+    nat: "Ivory Coast",
     club: "RB Leipzig",
     overall: 81,
   },
@@ -3585,7 +3585,7 @@ exports.LEGEND_POOL = [
   {
     name: "Didier Drogba",
     pos: "DC",
-    nat: "Côte d'Ivoire",
+    nat: "Ivory Coast",
     club: "Legend",
     overall: 89,
   },
@@ -3942,7 +3942,7 @@ exports.LEGEND_POOL = [
   {
     name: "Yaya Touré",
     pos: "MC",
-    nat: "Côte d'Ivoire",
+    nat: "Ivory Coast",
     club: "Legend",
     overall: 87,
   },
