@@ -2152,6 +2152,7 @@ export default function FifaLiga() {
           </div>
         )}
         {mode === "other" &&
+          !isStar &&
           (() => {
             const locked = isClauseLocked(p);
             const hoursLeft = locked
