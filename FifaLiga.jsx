@@ -1988,6 +1988,8 @@ export default function FifaLiga() {
     // mode: "own" (full management) | "other" (read-only + clause/offer)
     const clauseTotal =
       (p.clauseValue ?? clauseBase(p.overall)) + (p.clauseInvested || 0) * 2;
+    const team = teams.find((t) => t.name === teamName);
+    const isStar = team.squad.star.name === p.name;
     return (
       <div style={{ padding: "10px 0", borderBottom: "1px solid #0f1e30" }}>
         <div
@@ -2059,7 +2061,7 @@ export default function FifaLiga() {
           <span>•</span>
           <span>🏟️ {p.club}</span>
         </div>
-        {mode === "own" && (
+        {mode === "own" && !isStar && (
           <div
             style={{
               display: "flex",
