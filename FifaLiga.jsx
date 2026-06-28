@@ -3865,7 +3865,7 @@ export default function FifaLiga() {
                   o.status !== "pending",
               )
               .sort((a, b) => b.createdAt - a.createdAt)
-              .slice(0, 10);
+              .slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
             return (
               <div>
                 <h2
@@ -4185,6 +4185,26 @@ export default function FifaLiga() {
                         </span>
                       </div>
                     ))}
+
+                    <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                      <button
+                        disabled={page === 1}
+                        onClick={() => setPage((p) => p - 1)}
+                      >
+                        Anterior
+                      </button>
+
+                      <span>
+                        Página {page} de {totalPages}
+                      </span>
+
+                      <button
+                        disabled={page === totalPages}
+                        onClick={() => setPage((p) => p + 1)}
+                      >
+                        Siguiente
+                      </button>
+                    </div>
                   </div>
                 )}
 
