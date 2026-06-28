@@ -2415,13 +2415,6 @@ exports.SQUAD_POOL = [
     overall: 82,
   },
   {
-    name: "Kenan Yildiz",
-    pos: "MCO",
-    nat: "Turkey",
-    club: "Juventus",
-    overall: 82,
-  },
-  {
     name: "Lukebakio",
     pos: "ED",
     nat: "Belgium",

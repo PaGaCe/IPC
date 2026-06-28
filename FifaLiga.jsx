@@ -1451,11 +1451,9 @@ export default function FifaLiga() {
       createdAt: Date.now(),
       read: false,
     };
-    setNotifications((prev) => {
-      const u = [notif, ...prev].slice(0, 50);
-      save({ notifications: u });
-      return u;
-    });
+    const updated = [notif, ...notifications].slice(0, 50);
+    setNotifications(updated);
+    return updated;
   };
 
   const findPlayerOwner = (playerId) =>
@@ -1612,11 +1610,11 @@ export default function FifaLiga() {
       `Oferta de ${fmtM(amount)} enviada por ${offerModal.player.name}`,
       "success",
     );
-    addNotification(
+    const newNotifications = addNotification(
       `${myTeamName} ha ofertado ${fmtM(amount)} por ${offerModal.player.name}.`,
       "offer",
     );
-    save({ offers: newOffers });
+    save({ offers: newOffers, notifications: newNotifications });
   };
   const acceptOffer = (offer) => {
     const buyer = teams.find((t) => t.name === offer.fromTeam);
@@ -1630,7 +1628,7 @@ export default function FifaLiga() {
       showToast("La plantilla del comprador está llena");
       return;
     }
-    executeTransfer(
+    const updatedTeams = executeTransfer(
       offer.toTeam,
       offer.fromTeam,
       offer.player,
@@ -1641,27 +1639,31 @@ export default function FifaLiga() {
       o.offerId === offer.offerId ? { ...o, status: "accepted" } : o,
     );
     setOffers(newOffers);
-    save({ offers: newOffers });
     showToast(
       `Oferta aceptada: ${offer.player.name} fichado por ${offer.fromTeam}`,
       "success",
     );
-    addNotification(
+    const newNotifications = addNotification(
       `${offer.toTeam} aceptó la oferta de ${fmtM(offer.amount)} de ${offer.fromTeam} por ${offer.player.name}.`,
       "offer",
     );
+    save({
+      offers: newOffers,
+      notifications: newNotifications,
+      teams: updatedTeams,
+    });
   };
   const rejectOffer = (offer) => {
     const newOffers = offers.map((o) =>
       o.offerId === offer.offerId ? { ...o, status: "rejected" } : o,
     );
     setOffers(newOffers);
-    save({ offers: newOffers });
     showToast("Oferta rechazada", "success");
-    addNotification(
+    const newNotifications = addNotification(
       `${offer.toTeam} rechazó la oferta de ${fmtM(offer.amount)} de ${offer.fromTeam} por ${offer.player.name}.`,
       "offer",
     );
+    save({ offers: newOffers, notifications: newNotifications });
   };
 
   // ── Results with scorers/assists/mvp ──
@@ -1862,6 +1864,9 @@ export default function FifaLiga() {
   const allPlayersWithTeam = teams.flatMap((t) =>
     allPlayersOf(t).map((p) => ({ ...p, teamName: t.name })),
   );
+  const pendingIncomingOffersCount = offers.filter(
+    (o) => o.toTeam === myTeamName && o.status === "pending",
+  ).length;
   const usedPlayerNames = allPlayersWithTeam.map((p) => p.name);
   const availableLegends = LEGEND_POOL.filter(
     (p) =>
@@ -2038,6 +2043,21 @@ export default function FifaLiga() {
           >
             {p.overall}
           </span>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 12,
+            color: "#5a7a9a",
+            marginBottom: mode ? 6 : 0,
+            marginLeft: 46, // para alinearlo con el nombre (después del badge de posición)
+          }}
+        >
+          <span>🌍 {p.nat}</span>
+          <span>•</span>
+          <span>🏟️ {p.club}</span>
         </div>
         {mode === "own" && (
           <div
@@ -4697,6 +4717,7 @@ export default function FifaLiga() {
             <button
               key={item.v}
               onClick={() => {
+                if (item.v === VIEWS.SQUADS) setViewingTeam(null);
                 setView(item.v);
                 if (item.v === VIEWS.MARKET) checkAndRefreshMarket();
               }}
@@ -4713,7 +4734,35 @@ export default function FifaLiga() {
                 color: view === item.v ? "#1a9fe0" : "#5a7a9a",
               }}
             >
-              <span style={{ fontSize: 19 }}>{item.icon}</span>
+              <span style={{ fontSize: 19, position: "relative" }}>
+                {item.icon}
+                {item.v === VIEWS.TRANSFERS &&
+                  pendingIncomingOffersCount > 0 && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: -4,
+                        right: -8,
+                        background: "#c0392b",
+                        color: "#fff",
+                        borderRadius: "50%",
+                        minWidth: 15,
+                        height: 15,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0 3px",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {pendingIncomingOffersCount > 9
+                        ? "9+"
+                        : pendingIncomingOffersCount}
+                    </span>
+                  )}
+              </span>
               <span
                 style={{
                   fontSize: 10,
