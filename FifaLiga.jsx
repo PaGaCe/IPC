@@ -3080,9 +3080,6 @@ export default function FifaLiga() {
                   >
                     {t.points}
                   </div>
-                  <div style={{ fontSize: 10, color: "#27ae60" }}>
-                    {fmtM(t.budget)}
-                  </div>
                 </div>
               </div>
             ))}
@@ -3404,15 +3401,17 @@ export default function FifaLiga() {
                         </div>
                       </div>
                     </div>
-                    <span
-                      style={{
-                        color: "#27ae60",
-                        fontWeight: 700,
-                        fontSize: 14,
-                      }}
-                    >
-                      {fmtM(t.budget)}
-                    </span>
+                    {isOwn ?? (
+                      <span
+                        style={{
+                          color: "#27ae60",
+                          fontWeight: 700,
+                          fontSize: 14,
+                        }}
+                      >
+                        {fmtM(t.budget)}
+                      </span>
+                    )}
                   </div>
                   {t.squad.star && (
                     <div
