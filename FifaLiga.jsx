@@ -2385,7 +2385,7 @@ export default function FifaLiga() {
               color: "#8aaccc",
             }}
           >
-            {mode === "own" && !isStar && (
+            {mode === "own" && (
               <span>
                 💰{" "}
                 <strong style={{ color: "#27ae60" }}>
