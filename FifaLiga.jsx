@@ -91,7 +91,17 @@ function clauseBase(overall) {
   return playerValue(overall);
 }
 const CLAUSE_LOCK_HOURS = 24;
+
+function isNightClauseLock() {
+  const now = new Date();
+  const hour = now.getHours(); // local hour
+  return hour >= 18 || hour < 6;
+}
+
 function isClauseLocked(player) {
+  // night general block
+  if (isNightClauseLock()) return true;
+
   if (!player.joinedAt) return false; // original draft players are never locked
   const elapsedMs = Date.now() - player.joinedAt;
   return elapsedMs < CLAUSE_LOCK_HOURS * 60 * 60 * 1000;
@@ -1475,6 +1485,13 @@ export default function FifaLiga() {
 
   const payClause = (sellerTeamName, player, clauseAmount) => {
     if (!myTeamName || myTeamName === sellerTeamName) return;
+    if (isNightClauseLock()) {
+      showToast(
+        "Las cláusulas están desactivadas entre las 18:00 y las 06:00.",
+      );
+      setClauseConfirm(null);
+      return;
+    }
     if (isClauseLocked(player)) {
       const hoursLeft = Math.ceil(
         clauseLockRemainingMs(player) / (60 * 60 * 1000),
