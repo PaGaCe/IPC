@@ -2385,12 +2385,14 @@ export default function FifaLiga() {
               color: "#8aaccc",
             }}
           >
-            <span>
-              💰{" "}
-              <strong style={{ color: "#27ae60" }}>
-                {fmtM(myTeamObj.budget)}
-              </strong>
-            </span>
+            {mode === "own" && !isStar && (
+              <span>
+                💰{" "}
+                <strong style={{ color: "#27ae60" }}>
+                  {fmtM(myTeamObj.budget)}
+                </strong>
+              </span>
+            )}
             <span>
               📋{" "}
               <strong>
