@@ -382,12 +382,9 @@ function getDayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 function msUntilNextMarketRefresh(lastRefresh) {
-  if (typeof lastRefresh !== "number") {
-    return 24 * 60 * 60 * 1000;
-  }
+  if (!lastRefresh) return 24 * 60 * 60 * 1000;
 
-  const nextRefresh = lastRefresh + 24 * 60 * 60 * 1000;
-  return Math.max(0, nextRefresh - Date.now());
+  return Math.max(0, lastRefresh + 24 * 60 * 60 * 1000 - Date.now());
 }
 function fmtCountdown(ms) {
   if (ms <= 0) return "00:00:00";
@@ -443,6 +440,7 @@ export default function FifaLiga() {
   });
 
   const [marketDay, setMarketDay] = useState(null);
+  const [marketRefreshAt, setMarketRefreshAt] = useState(null);
   const [marketCountdownMs, setMarketCountdownMs] = useState(
     msUntilNextMarketRefresh(),
   );
@@ -568,9 +566,8 @@ export default function FifaLiga() {
     if (s.fixtures) setFixtures(s.fixtures);
     setStarted(!!s.started);
     setDraftDone(!!s.draftDone);
-    if (s.marketDay)
-      setMarketDay(typeof s.marketDay === "number" ? s.marketDay : Date.now());
-    console.log("marketDay:", marketDay, typeof marketDay);
+    if (s.marketDay) setMarketDay(s.marketDay);
+    if (s.marketRefreshAt) setMarketRefreshAt(s.marketRefreshAt);
     if (s.marketList) setMarketList(s.marketList);
     if (s.bids) setBids(s.bids);
     if (s.marketHistory) setMarketHistory(s.marketHistory);
@@ -649,13 +646,13 @@ export default function FifaLiga() {
   // ── Market countdown: ticks every second while viewing the market ──
   useEffect(() => {
     if (view !== VIEWS.MARKET) return;
-    setMarketCountdownMs(msUntilNextMarketRefresh(marketDay));
+    setMarketCountdownMs(msUntilNextMarketRefresh(marketRefreshAt));
 
     const tick = setInterval(() => {
-      setMarketCountdownMs(msUntilNextMarketRefresh(marketDay));
+      setMarketCountdownMs(msUntilNextMarketRefresh(marketRefreshAt));
     }, 1000);
     return () => clearInterval(tick);
-  }, [view, marketDay]);
+  }, [view, marketRefreshAt]);
 
   const save = useCallback(
     async (patch) => {
@@ -666,6 +663,7 @@ export default function FifaLiga() {
         started,
         draftDone,
         marketDay,
+        marketRefreshAt,
         marketList,
         bids,
         marketHistory,
@@ -920,6 +918,7 @@ export default function FifaLiga() {
         });
       }
     const day = getDayKey();
+    const refreshAt = Date.now();
     const excluded = liveTeams.flatMap((t) =>
       [
         t.squad?.star?.name,
@@ -932,6 +931,7 @@ export default function FifaLiga() {
     setStarted(true);
     setView(VIEWS.TABLE);
     setMarketDay(day);
+    setMarketRefreshAt(refreshAt);
     setMarketList(mList);
     setBids({});
     save({
@@ -939,6 +939,7 @@ export default function FifaLiga() {
       fixtures: fix,
       started: true,
       marketDay: day,
+      marketRefreshAt: refreshAt,
       marketList: mList,
       bids: {},
     });
@@ -1248,6 +1249,7 @@ export default function FifaLiga() {
   const resolveAuctions = () => {
     if (!isAdmin) return;
     const today = getDayKey();
+    const refreshAt = Date.now();
     let updatedTeams = [...teams];
     const newHistory = [...marketHistory];
     for (const player of marketList) {
@@ -1312,14 +1314,15 @@ export default function FifaLiga() {
     );
     const mList = generateMarket(today, excluded);
     setTeams(updatedTeams);
-    const refreshTime = Date.now();
-    setMarketDay(refreshTime);
+    setMarketDay(today);
+    setMarketRefreshAt(refreshAt);
     setMarketList(mList);
     setBids({});
     setMarketHistory(newHistory);
     save({
       teams: updatedTeams,
-      marketDay: refreshTime,
+      marketDay: today,
+      marketRefreshAt: refreshAt,
       marketList: mList,
       bids: {},
       marketHistory: newHistory,
