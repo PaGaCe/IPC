@@ -2337,7 +2337,7 @@ export default function FifaLiga() {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 20 }}>⚽</span>
             <span style={{ fontWeight: 800, fontSize: 16, color: "#fff" }}>
-              FIFA Liga
+              IPC
             </span>
             {leagueCode && (
               <span style={{ color: "#4a6a8a", fontSize: 11, marginLeft: 4 }}>
@@ -2385,12 +2385,14 @@ export default function FifaLiga() {
               color: "#8aaccc",
             }}
           >
-            <span>
-              💰{" "}
-              <strong style={{ color: "#27ae60" }}>
-                {fmtM(myTeamObj.budget)}
-              </strong>
-            </span>
+            {isOwn && (
+              <span>
+                💰{" "}
+                <strong style={{ color: "#27ae60" }}>
+                  {fmtM(myTeamObj.budget)}
+                </strong>
+              </span>
+            )}
             <span>
               📋{" "}
               <strong>
@@ -2484,7 +2486,7 @@ export default function FifaLiga() {
                     marginBottom: 8,
                   }}
                 >
-                  FIFA Liga
+                  IPC
                 </h2>
                 <p style={{ color: "#5a7a9a", fontSize: 14, marginBottom: 24 }}>
                   Inicia sesión para guardar tus ligas y volver a entrar cuando
@@ -2658,7 +2660,7 @@ export default function FifaLiga() {
                   margin: 0,
                 }}
               >
-                FIFA Liga
+                IPC
               </h2>
               {userProfile?.leagues?.length > 0 && (
                 <button
