@@ -381,19 +381,11 @@ function initTeam(name) {
 function getDayKey() {
   return new Date().toISOString().slice(0, 10);
 }
-function msUntilNextMarketRefresh() {
-  const now = new Date();
-  const nextMidnightUTC = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() + 1,
-      0,
-      0,
-      0,
-    ),
-  );
-  return nextMidnightUTC.getTime() - now.getTime();
+function msUntilNextMarketRefresh(lastRefresh) {
+  if (!lastRefresh) return 24 * 60 * 60 * 1000;
+
+  const nextRefresh = lastRefresh + 24 * 60 * 60 * 1000;
+  return Math.max(0, nextRefresh - Date.now());
 }
 function fmtCountdown(ms) {
   if (ms <= 0) return "00:00:00";
@@ -653,13 +645,13 @@ export default function FifaLiga() {
   // ── Market countdown: ticks every second while viewing the market ──
   useEffect(() => {
     if (view !== VIEWS.MARKET) return;
-    setMarketCountdownMs(msUntilNextMarketRefresh());
-    const tick = setInterval(
-      () => setMarketCountdownMs(msUntilNextMarketRefresh()),
-      1000,
-    );
+    setMarketCountdownMs(msUntilNextMarketRefresh(marketDay));
+
+    const tick = setInterval(() => {
+      setMarketCountdownMs(msUntilNextMarketRefresh(marketDay));
+    }, 1000);
     return () => clearInterval(tick);
-  }, [view]);
+  }, [view, marketDay]);
 
   const save = useCallback(
     async (patch) => {
@@ -1247,7 +1239,7 @@ export default function FifaLiga() {
   // ── Market resolution ──
   const checkAndRefreshMarket = () => {
     const today = getDayKey();
-    if (today !== marketDay) resolveAuctions();
+    if (Date.now() >= marketDay + 24 * 60 * 60 * 1000) resolveAuctions();
   };
   const resolveAuctions = () => {
     if (!isAdmin) return;
@@ -1316,13 +1308,14 @@ export default function FifaLiga() {
     );
     const mList = generateMarket(today, excluded);
     setTeams(updatedTeams);
-    setMarketDay(today);
+    const refreshTime = Date.now();
+    setMarketDay(refreshTime);
     setMarketList(mList);
     setBids({});
     setMarketHistory(newHistory);
     save({
       teams: updatedTeams,
-      marketDay: today,
+      marketDay: refreshTime,
       marketList: mList,
       bids: {},
       marketHistory: newHistory,
