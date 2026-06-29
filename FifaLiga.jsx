@@ -397,7 +397,7 @@ function fmtCountdown(ms) {
 function allPlayersOf(team) {
   return [team?.squad?.star, ...(team?.squad?.squad || [])].filter(Boolean);
 }
-const MIN_SQUAD_TO_PLAY = 18;
+const MIN_SQUAD_TO_PLAY = 16;
 const ITEMS_PER_PAGE = 5;
 function hasIncompleteSquad(team) {
   return allPlayersOf(team).length < MIN_SQUAD_TO_PLAY;
