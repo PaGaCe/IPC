@@ -2142,6 +2142,27 @@ exports.SQUAD_POOL = [
     overall: 80,
   },
   {
+    name: "Mattia Zacagni",
+    pos: "EI",
+    nat: "Italy",
+    club: "Lazio",
+    overall: 83,
+  },
+  {
+    name: "Rodrigo de Paul",
+    pos: "MC",
+    nat: "Argentina",
+    club: "Inter Miami",
+    overall: 83,
+  },
+  {
+    name: "Leandro Trossard",
+    pos: "EI",
+    nat: "Belgium",
+    club: "Arsenal",
+    overall: 83,
+  },
+  {
     name: "Reinildo",
     pos: "LI",
     nat: "Mozambique",
@@ -3332,6 +3353,13 @@ exports.SQUAD_POOL = [
     nat: "Switzerland",
     club: "Bologna",
     overall: 82,
+  },
+  {
+    name: "Serge Gnabry",
+    pos: "MCO",
+    nat: "Germany",
+    club: "Bayern",
+    overall: 83,
   },
   {
     name: "Adam Wharton",

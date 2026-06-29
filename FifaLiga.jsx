@@ -1342,12 +1342,12 @@ export default function FifaLiga() {
   const getAvailableBudget = (teamName, excludeMarketId = null) => {
     const team = teams.find((t) => t.name === teamName);
     if (!team) return 0;
-    const committed = Object.entries(bids).reduce(
-      (sum, [mid, tb]) =>
-        mid === excludeMarketId ? sum : sum + (tb[teamName] || 0),
-      0,
-    );
-    return team.budget - committed;
+
+    const currentBidOnThis = excludeMarketId
+      ? bids[excludeMarketId]?.[teamName] || 0
+      : 0;
+
+    return team.budget + currentBidOnThis;
   };
   const confirmBid = () => {
     const player = bidModal;
@@ -1704,7 +1704,7 @@ export default function FifaLiga() {
     setOffers(newOffers);
     showToast("Oferta cancelada", "success");
     const newNotifications = addNotification(
-      `${offer.fromTeam} se arrepintió de hacer la oferta de ${fmtM(offer.amount)} de ${offer.fromTeam} por ${offer.player.name}.`,
+      `${offer.fromTeam} se arrepintió de hacer la oferta de ${fmtM(offer.amount)} de ${offer.toTeam} por ${offer.player.name}.`,
       "offer",
     );
 
