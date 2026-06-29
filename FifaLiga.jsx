@@ -382,7 +382,9 @@ function getDayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 function msUntilNextMarketRefresh(lastRefresh) {
-  if (!lastRefresh) return 24 * 60 * 60 * 1000;
+  if (typeof lastRefresh !== "number") {
+    return 24 * 60 * 60 * 1000;
+  }
 
   const nextRefresh = lastRefresh + 24 * 60 * 60 * 1000;
   return Math.max(0, nextRefresh - Date.now());
@@ -566,7 +568,9 @@ export default function FifaLiga() {
     if (s.fixtures) setFixtures(s.fixtures);
     setStarted(!!s.started);
     setDraftDone(!!s.draftDone);
-    if (s.marketDay) setMarketDay(s.marketDay);
+    if (s.marketDay)
+      setMarketDay(typeof s.marketDay === "number" ? s.marketDay : Date.now());
+    console.log("marketDay:", marketDay, typeof marketDay);
     if (s.marketList) setMarketList(s.marketList);
     if (s.bids) setBids(s.bids);
     if (s.marketHistory) setMarketHistory(s.marketHistory);
