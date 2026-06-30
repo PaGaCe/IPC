@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { storage } from "./firebaseStorage";
 import * as Flags from "country-flag-icons/react/3x2";
+import logoImg from "./src/assets/logo.webp";
 import {
   signInWithGoogle,
   signOutUser,
@@ -606,6 +607,14 @@ export default function FifaLiga() {
       setAuthLoading(false);
     });
     return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
   }, []);
 
   const handleGoogleSignIn = async () => {
@@ -2180,27 +2189,30 @@ export default function FifaLiga() {
   const myTeamObj = teams.find((t) => t.name === myTeamName);
 
   // ─── Mobile-first styles ────────────────────────────────────────────────
-  const bg = "#080d18";
+  const bg = "#0a0805"; // negro cálido en vez de azul oscuro
+  const gold = "#c9a227"; // dorado principal
+  const goldLight = "#e8c252"; // dorado claro (hover/highlight)
+  const goldDark = "#8a6f1a"; // dorado oscuro (bordes)
   const card = {
-    background: "#0d1b2e",
-    border: "1px solid #1a3050",
+    background: "#15110a",
+    border: "1px solid #2e2615",
     borderRadius: 14,
     padding: "14px 16px",
     marginBottom: 10,
   };
   const input = {
-    background: "#0b1525",
-    border: "1px solid #1a3050",
+    background: "#100d08",
+    border: "1px solid #2e2615",
     borderRadius: 10,
     padding: "12px 14px",
-    color: "#e8eaf0",
+    color: "#f0e6d2",
     fontSize: 15,
     outline: "none",
     width: "100%",
   };
   const btn = (col) => ({
-    background: col || "#1a5f96",
-    color: "#fff",
+    background: col || "linear-gradient(135deg,#c9a227,#8a6f1a)",
+    color: col ? "#fff" : "#0a0805",
     border: "none",
     borderRadius: 12,
     padding: "13px 20px",
@@ -2210,9 +2222,9 @@ export default function FifaLiga() {
     width: "100%",
   });
   const pill = (active) => ({
-    background: active ? "#1a5f96" : "#0b1525",
-    color: active ? "#fff" : "#8aaccc",
-    border: "1px solid #1a3050",
+    background: active ? "linear-gradient(135deg,#c9a227,#8a6f1a)" : "#100d08",
+    color: active ? "#0a0805" : "#c9a98a",
+    border: "1px solid #2e2615",
     borderRadius: 20,
     padding: "7px 14px",
     cursor: "pointer",
@@ -2239,7 +2251,7 @@ export default function FifaLiga() {
     const team = teams.find((t) => t.name === teamName);
     const isStar = team.squad.star.name === p.name;
     return (
-      <div style={{ padding: "10px 0", borderBottom: "1px solid #0f1e30" }}>
+      <div style={{ padding: "10px 0", borderBottom: "1px solid #241e10" }}>
         <div
           style={{
             display: "flex",
@@ -2272,7 +2284,7 @@ export default function FifaLiga() {
             <span
               style={{
                 fontSize: 10,
-                color: "#5a7a9a",
+                color: "#8a7a5a",
                 display: "flex",
                 gap: 6,
               }}
@@ -2300,7 +2312,7 @@ export default function FifaLiga() {
             alignItems: "center",
             gap: 8,
             fontSize: 12,
-            color: "#5a7a9a",
+            color: "#8a7a5a",
             marginBottom: mode ? 6 : 0,
             marginLeft: 46,
           }}
@@ -2339,8 +2351,8 @@ export default function FifaLiga() {
               }
               style={{
                 background: "transparent",
-                border: "1px solid #1a5f96",
-                color: "#5a9fd4",
+                border: "1px solid #c9a227",
+                color: "#e8c252",
                 borderRadius: 6,
                 padding: "4px 10px",
                 cursor: "pointer",
@@ -2386,7 +2398,7 @@ export default function FifaLiga() {
               <button
                 onClick={() => investInClause(teamName, p.id)}
                 style={{
-                  background: "#1a5f96",
+                  background: "#c9a227",
                   color: "#fff",
                   border: "none",
                   borderRadius: 6,
@@ -2419,7 +2431,7 @@ export default function FifaLiga() {
               >
                 <span
                   style={{
-                    color: locked ? "#5a7a9a" : "#c0392b",
+                    color: locked ? "#8a7a5a" : "#c0392b",
                     fontSize: 11,
                     fontWeight: 700,
                     marginRight: "auto",
@@ -2432,8 +2444,8 @@ export default function FifaLiga() {
                   onClick={() => openOfferModal(teamName, p)}
                   style={{
                     background: "transparent",
-                    border: "1px solid #1a5f96",
-                    color: "#5a9fd4",
+                    border: "1px solid #c9a227",
+                    color: "#e8c252",
                     borderRadius: 6,
                     padding: "4px 10px",
                     cursor: "pointer",
@@ -2602,7 +2614,7 @@ export default function FifaLiga() {
         minHeight: "100vh",
         background: bg,
         color: "#e8eaf0",
-        fontFamily: "'Inter',system-ui,sans-serif",
+        fontFamily: "'Outfit',system-ui,sans-serif",
         paddingBottom: started ? 78 : 0,
       }}
     >
@@ -2612,8 +2624,8 @@ export default function FifaLiga() {
           position: "sticky",
           top: 0,
           zIndex: 50,
-          background: "linear-gradient(135deg,#0b1525,#142440)",
-          borderBottom: "1px solid #1a3050",
+          background: "linear-gradient(135deg,#100d08,#1f1a0c)",
+          borderBottom: "1px solid #2e2615",
           padding: "12px 16px",
         }}
       >
@@ -2626,12 +2638,21 @@ export default function FifaLiga() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 20 }}>⚽</span>
-            <span style={{ fontWeight: 800, fontSize: 16, color: "#fff" }}>
+            <img
+              src={logoImg}
+              alt="logo"
+              style={{
+                width: 26,
+                height: 26,
+                objectFit: "contain",
+                borderRadius: 6,
+              }}
+            />
+            <span style={{ fontWeight: 800, fontSize: 16, color: "#e8c252" }}>
               IPC
             </span>
             {leagueCode && (
-              <span style={{ color: "#4a6a8a", fontSize: 11, marginLeft: 4 }}>
+              <span style={{ color: "#8a7a5a", fontSize: 11, marginLeft: 4 }}>
                 · {leagueCode}
               </span>
             )}
@@ -2640,7 +2661,7 @@ export default function FifaLiga() {
             <div
               style={{
                 ...pill(true),
-                background: "#142440",
+                background: "#1f1a0c",
                 cursor: "default",
               }}
             >
@@ -2673,7 +2694,7 @@ export default function FifaLiga() {
               gap: 14,
               marginTop: 8,
               fontSize: 12,
-              color: "#8aaccc",
+              color: "#c9b88a",
             }}
           >
             <span>
@@ -2706,7 +2727,7 @@ export default function FifaLiga() {
                 display: "flex",
                 justifyContent: "space-between",
                 fontSize: 11,
-                color: "#4a6a8a",
+                color: "#8a7a5a",
                 marginBottom: 4,
               }}
             >
@@ -2715,10 +2736,10 @@ export default function FifaLiga() {
                 {played.length}/{fixtures.length}
               </span>
             </div>
-            <div style={{ background: "#0b1525", borderRadius: 4, height: 4 }}>
+            <div style={{ background: "#100d08", borderRadius: 4, height: 4 }}>
               <div
                 style={{
-                  background: "linear-gradient(90deg,#1a5f96,#27ae60)",
+                  background: "linear-gradient(90deg,#c9a227,#e8c252)",
                   width: `${pct}%`,
                   height: "100%",
                   borderRadius: 4,
@@ -2730,7 +2751,7 @@ export default function FifaLiga() {
               <div
                 style={{
                   marginTop: 10,
-                  background: "linear-gradient(135deg,#1a3050,#2a4060)",
+                  background: "linear-gradient(135deg,#2e2615,#2a4060)",
                   border: "1px solid #f0c040",
                   borderRadius: 12,
                   padding: "12px 14px",
@@ -2759,8 +2780,18 @@ export default function FifaLiga() {
           <div style={{ textAlign: "center", padding: "60px 20px" }}>
             {authLoading ? (
               <>
-                <div style={{ fontSize: 24, marginBottom: 10 }}>⚽</div>
-                <p style={{ color: "#4a6a8a", fontSize: 13 }}>
+                <img
+                  src={logoImg}
+                  alt="IPC"
+                  style={{
+                    width: 120,
+                    height: 120,
+                    objectFit: "contain",
+                    marginBottom: 14,
+                    borderRadius: 16,
+                  }}
+                />{" "}
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>
                   Cargando sesión...
                 </p>
               </>
@@ -2777,7 +2808,7 @@ export default function FifaLiga() {
                 >
                   IPC
                 </h2>
-                <p style={{ color: "#5a7a9a", fontSize: 14, marginBottom: 24 }}>
+                <p style={{ color: "#8a7a5a", fontSize: 14, marginBottom: 24 }}>
                   Inicia sesión para guardar tus ligas y volver a entrar cuando
                   quieras.
                 </p>
@@ -2859,8 +2890,8 @@ export default function FifaLiga() {
                 onClick={handleSignOut}
                 style={{
                   background: "transparent",
-                  border: "1px solid #1a3050",
-                  color: "#5a7a9a",
+                  border: "1px solid #2e2615",
+                  color: "#8a7a5a",
                   borderRadius: 8,
                   padding: "5px 10px",
                   cursor: "pointer",
@@ -2870,7 +2901,7 @@ export default function FifaLiga() {
                 Salir
               </button>
             </div>
-            <p style={{ color: "#5a7a9a", fontSize: 13, marginBottom: 18 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 18 }}>
               {userProfile?.displayName}, elige una liga para continuar.
             </p>
             {(userProfile?.leagues || []).map((l) => (
@@ -2897,19 +2928,19 @@ export default function FifaLiga() {
                   <div style={{ fontWeight: 700, fontSize: 15 }}>
                     {l.teamName}
                   </div>
-                  <div style={{ color: "#4a6a8a", fontSize: 12 }}>
+                  <div style={{ color: "#8a7a5a", fontSize: 12 }}>
                     Código: {l.code}
                   </div>
                 </div>
-                <span style={{ color: "#5a7a9a", fontSize: 18 }}>›</span>
+                <span style={{ color: "#8a7a5a", fontSize: 18 }}>›</span>
               </div>
             ))}
             <button
               onClick={() => setView(VIEWS.HOME)}
               style={{
                 ...btn("transparent"),
-                border: "1px solid #1a3050",
-                color: "#5a7a9a",
+                border: "1px solid #2e2615",
+                color: "#8a7a5a",
                 marginTop: 10,
               }}
             >
@@ -2924,7 +2955,7 @@ export default function FifaLiga() {
             style={{
               textAlign: "center",
               padding: "60px 20px",
-              color: "#4a6a8a",
+              color: "#8a7a5a",
             }}
           >
             <div style={{ fontSize: 24, marginBottom: 10 }}>⚽</div>
@@ -2956,8 +2987,8 @@ export default function FifaLiga() {
                   onClick={() => setView(VIEWS.MY_LEAGUES)}
                   style={{
                     background: "transparent",
-                    border: "1px solid #1a3050",
-                    color: "#5a9fd4",
+                    border: "1px solid #2e2615",
+                    color: "#e8c252",
                     borderRadius: 8,
                     padding: "5px 10px",
                     cursor: "pointer",
@@ -2968,7 +2999,7 @@ export default function FifaLiga() {
                 </button>
               )}
             </div>
-            <p style={{ color: "#5a7a9a", fontSize: 14, marginBottom: 24 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 14, marginBottom: 24 }}>
               Crea una liga nueva o únete a una con el código que te hayan
               compartido.
             </p>
@@ -2999,7 +3030,7 @@ export default function FifaLiga() {
               />
               <button
                 onClick={createLeague}
-                style={btn("linear-gradient(135deg,#1a5f96,#27ae60)")}
+                style={btn("linear-gradient(135deg,#c9a227,#e8c252)")}
               >
                 Crear y ser admin
               </button>
@@ -3028,7 +3059,7 @@ export default function FifaLiga() {
               style={{
                 background: "transparent",
                 border: "none",
-                color: "#5a7a9a",
+                color: "#8a7a5a",
                 cursor: "pointer",
                 fontSize: 12,
                 marginTop: 16,
@@ -3053,7 +3084,7 @@ export default function FifaLiga() {
             >
               Crea tu equipo
             </h2>
-            <p style={{ color: "#5a7a9a", fontSize: 14, marginBottom: 6 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 14, marginBottom: 6 }}>
               Código de liga:{" "}
               <strong style={{ color: "#f0c040", letterSpacing: 1 }}>
                 {leagueCode}
@@ -3062,7 +3093,7 @@ export default function FifaLiga() {
                 <span style={{ color: "#27ae60" }}>(eres admin)</span>
               )}
             </p>
-            <p style={{ color: "#5a7a9a", fontSize: 13, marginBottom: 18 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 18 }}>
               Al crear tu equipo se te asignará automáticamente una estrella
               (86) y una plantilla de 17 jugadores más. Empiezas con{" "}
               <strong style={{ color: "#27ae60" }}>100M€</strong>.
@@ -3086,7 +3117,7 @@ export default function FifaLiga() {
               <div style={{ marginBottom: 18 }}>
                 <div
                   style={{
-                    color: "#8aaccc",
+                    color: "#c9b88a",
                     fontSize: 12,
                     fontWeight: 700,
                     marginBottom: 8,
@@ -3101,8 +3132,8 @@ export default function FifaLiga() {
                     <div
                       key={t.name}
                       style={{
-                        background: "#0b1525",
-                        border: "1px solid #1a3050",
+                        background: "#100d08",
+                        border: "1px solid #2e2615",
                         borderRadius: 20,
                         padding: "5px 12px",
                         fontSize: 12,
@@ -3129,7 +3160,7 @@ export default function FifaLiga() {
               <button
                 onClick={createMyTeam}
                 style={{
-                  ...btn("linear-gradient(135deg,#1a5f96,#27ae60)"),
+                  ...btn("linear-gradient(135deg,#c9a227,#e8c252)"),
                   width: "auto",
                   padding: "12px 18px",
                 }}
@@ -3141,8 +3172,8 @@ export default function FifaLiga() {
               onClick={() => setView(VIEWS.HOME)}
               style={{
                 ...btn("transparent"),
-                border: "1px solid #1a3050",
-                color: "#5a7a9a",
+                border: "1px solid #2e2615",
+                color: "#8a7a5a",
               }}
             >
               ← Volver
@@ -3163,13 +3194,13 @@ export default function FifaLiga() {
             >
               Sala de espera
             </h2>
-            <p style={{ color: "#5a7a9a", fontSize: 14, marginBottom: 6 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 14, marginBottom: 6 }}>
               Código de liga:{" "}
               <strong style={{ color: "#f0c040", letterSpacing: 1 }}>
                 {leagueCode}
               </strong>
             </p>
-            <p style={{ color: "#5a7a9a", fontSize: 13, marginBottom: 18 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 18 }}>
               Comparte este código con el resto de jugadores.{" "}
               {isAdmin
                 ? "Inicia la liga cuando todos los equipos estén listos."
@@ -3178,7 +3209,7 @@ export default function FifaLiga() {
 
             <div
               style={{
-                color: "#8aaccc",
+                color: "#c9b88a",
                 fontSize: 12,
                 fontWeight: 700,
                 marginBottom: 8,
@@ -3231,7 +3262,7 @@ export default function FifaLiga() {
                       >
                         {t.squad.star.pos}
                       </span>
-                      <span style={{ fontSize: 12, color: "#8aaccc" }}>
+                      <span style={{ fontSize: 12, color: "#c9b88a" }}>
                         ⭐ {t.squad.star.name}
                       </span>
                     </div>
@@ -3255,8 +3286,8 @@ export default function FifaLiga() {
                   style={{
                     ...btn(
                       teams.length >= 2
-                        ? "linear-gradient(135deg,#1a5f96,#27ae60)"
-                        : "#0f1e30",
+                        ? "linear-gradient(135deg,#c9a227,#e8c252)"
+                        : "#241e10",
                     ),
                     color: teams.length >= 2 ? "#fff" : "#3a5a7a",
                     cursor: teams.length >= 2 ? "pointer" : "not-allowed",
@@ -3267,7 +3298,7 @@ export default function FifaLiga() {
                 {teams.length < 2 && (
                   <p
                     style={{
-                      color: "#4a6a8a",
+                      color: "#8a7a5a",
                       fontSize: 11,
                       marginTop: 8,
                       textAlign: "center",
@@ -3282,7 +3313,7 @@ export default function FifaLiga() {
                 style={{
                   marginTop: 16,
                   textAlign: "center",
-                  color: "#4a6a8a",
+                  color: "#8a7a5a",
                   fontSize: 12,
                 }}
               >
@@ -3305,7 +3336,7 @@ export default function FifaLiga() {
             >
               Clasificación
             </h2>
-            <p style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 14 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 14 }}>
               Toca un equipo para ver su plantilla.
             </p>
             {sorted.map((t, i) => (
@@ -3325,13 +3356,13 @@ export default function FifaLiga() {
                   gap: 10,
                   background:
                     i === 0 ? "rgba(39,174,96,0.08)" : card.background,
-                  borderColor: t.name === myTeamName ? "#1a5f96" : "#1a3050",
+                  borderColor: t.name === myTeamName ? "#c9a227" : "#2e2615",
                   cursor: "pointer",
                 }}
               >
                 <span
                   style={{
-                    color: i === 0 ? "#27ae60" : "#4a6a8a",
+                    color: i === 0 ? "#27ae60" : "#8a7a5a",
                     fontWeight: 800,
                     fontSize: 15,
                     minWidth: 20,
@@ -3359,7 +3390,7 @@ export default function FifaLiga() {
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 11, color: "#5a7a9a" }}>
+                  <div style={{ fontSize: 11, color: "#8a7a5a" }}>
                     {t.played}PJ · {t.won}G {t.drawn}E {t.lost}P · {t.gf}-{t.ga}
                   </div>
                 </div>
@@ -3403,7 +3434,7 @@ export default function FifaLiga() {
             {pending.length > 0 && (
               <div
                 style={{
-                  color: "#8aaccc",
+                  color: "#c9b88a",
                   fontSize: 12,
                   fontWeight: 700,
                   marginBottom: 8,
@@ -3435,7 +3466,7 @@ export default function FifaLiga() {
                     <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>
                       {f.home}
                     </span>
-                    <span style={{ color: "#4a6a8a", fontSize: 11 }}>vs</span>
+                    <span style={{ color: "#8a7a5a", fontSize: 11 }}>vs</span>
                     <span
                       style={{
                         fontWeight: 700,
@@ -3488,7 +3519,7 @@ export default function FifaLiga() {
             {played.length > 0 && (
               <div
                 style={{
-                  color: "#8aaccc",
+                  color: "#c9b88a",
                   fontSize: 12,
                   fontWeight: 700,
                   margin: "18px 0 8px",
@@ -3523,8 +3554,8 @@ export default function FifaLiga() {
                     </span>
                     <div
                       style={{
-                        background: "#080d18",
-                        border: "1px solid #1a3050",
+                        background: "#0a0805",
+                        border: "1px solid #2e2615",
                         borderRadius: 6,
                         padding: "3px 10px",
                         fontWeight: 800,
@@ -3556,9 +3587,9 @@ export default function FifaLiga() {
                       style={{
                         marginTop: 8,
                         paddingTop: 8,
-                        borderTop: "1px solid #0f1e30",
+                        borderTop: "1px solid #241e10",
                         fontSize: 11,
-                        color: "#5a7a9a",
+                        color: "#8a7a5a",
                         display: "flex",
                         flexWrap: "wrap",
                         gap: 8,
@@ -3611,7 +3642,7 @@ export default function FifaLiga() {
               return (
                 <p
                   style={{
-                    color: "#4a6a8a",
+                    color: "#8a7a5a",
                     fontSize: 13,
                     textAlign: "center",
                     marginTop: 30,
@@ -3640,7 +3671,7 @@ export default function FifaLiga() {
                     style={{
                       background: "transparent",
                       border: "none",
-                      color: "#5a9fd4",
+                      color: "#e8c252",
                       cursor: "pointer",
                       fontSize: 13,
                       marginBottom: 10,
@@ -3662,7 +3693,7 @@ export default function FifaLiga() {
                 </h2>
                 {!isOwn && (
                   <p
-                    style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 14 }}
+                    style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 14 }}
                   >
                     Solo puedes ofertar o pagar la cláusula. Esta plantilla no
                     es tuya.
@@ -3694,7 +3725,7 @@ export default function FifaLiga() {
                         <div style={{ fontWeight: 700, fontSize: 15 }}>
                           {t.name}
                         </div>
-                        <div style={{ color: "#4a6a8a", fontSize: 11 }}>
+                        <div style={{ color: "#8a7a5a", fontSize: 11 }}>
                           {allP.length}/{MAX_SQUAD} jugadores
                         </div>
                       </div>
@@ -3766,7 +3797,7 @@ export default function FifaLiga() {
                           />
                           <div
                             style={{
-                              color: "#4a6a8a",
+                              color: "#8a7a5a",
                               fontSize: 11,
                               fontWeight: 700,
                               marginBottom: 4,
@@ -3827,7 +3858,7 @@ export default function FifaLiga() {
                       )}
                       <div
                         style={{
-                          color: "#4a6a8a",
+                          color: "#8a7a5a",
                           fontSize: 11,
                           fontWeight: 700,
                           marginBottom: 4,
@@ -3890,7 +3921,7 @@ export default function FifaLiga() {
                 ⏱ {fmtCountdown(marketCountdownMs)}
               </span>
             </div>
-            <p style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 14 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 14 }}>
               Toca un jugador para pujar. Verás cuántas pujas tiene, pero no
               quién las hizo.
             </p>
@@ -3913,14 +3944,14 @@ export default function FifaLiga() {
                 <div
                   style={{
                     ...card,
-                    background: "linear-gradient(135deg,#1a0d10,#0d1b2e)",
+                    background: "linear-gradient(135deg,#1a0d10,#15110a)",
                     border: "1px solid #c0392b",
                     textAlign: "center",
                     padding: "20px 16px",
                   }}
                 >
                   <div
-                    style={{ fontSize: 13, color: "#4a6a8a", marginBottom: 12 }}
+                    style={{ fontSize: 13, color: "#8a7a5a", marginBottom: 12 }}
                   >
                     {availableLegends.length} leyenda
                     {availableLegends.length !== 1 ? "s" : ""} disponible
@@ -4016,7 +4047,7 @@ export default function FifaLiga() {
                           {player.name}
                         </span>
                       </div>
-                      <div style={{ fontSize: 11, color: "#4a6a8a" }}>
+                      <div style={{ fontSize: 11, color: "#8a7a5a" }}>
                         {player.club}
                       </div>
                       <div
@@ -4030,7 +4061,7 @@ export default function FifaLiga() {
                         <span style={{ color: "#f0c040" }}>
                           Min. {fmtM(player.baseValue)}
                         </span>
-                        <span style={{ color: "#5a7a9a" }}>
+                        <span style={{ color: "#8a7a5a" }}>
                           👥 {totalBids} {totalBids === 1 ? "puja" : "pujas"}
                         </span>
                       </div>
@@ -4058,7 +4089,7 @@ export default function FifaLiga() {
                           </div>
                         </div>
                       ) : (
-                        <span style={{ fontSize: 20, color: "#4a6a8a" }}>
+                        <span style={{ fontSize: 20, color: "#8a7a5a" }}>
                           ›
                         </span>
                       )}
@@ -4101,7 +4132,7 @@ export default function FifaLiga() {
                     🔄 En venta por otros equipos
                   </h3>
                   <p
-                    style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 10 }}
+                    style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 10 }}
                   >
                     Haz una oferta; el equipo propietario decide si la acepta.
                   </p>
@@ -4156,7 +4187,7 @@ export default function FifaLiga() {
                             {p.name}
                           </span>
                         </div>
-                        <div style={{ fontSize: 11, color: "#4a6a8a" }}>
+                        <div style={{ fontSize: 11, color: "#8a7a5a" }}>
                           de {p.ownerTeam}
                         </div>
                       </div>
@@ -4164,7 +4195,7 @@ export default function FifaLiga() {
                         {p.ownerTeam !== myTeamName && (
                           <button
                             onClick={() => openOfferModal(p.ownerTeam, p)}
-                            style={btn("#1a5f96")}
+                            style={btn("#c9a227")}
                           >
                             Ofertar
                           </button>
@@ -4340,7 +4371,7 @@ export default function FifaLiga() {
                           <div style={{ fontWeight: 700, fontSize: 14 }}>
                             {o.player.name}
                           </div>
-                          <div style={{ fontSize: 11, color: "#4a6a8a" }}>
+                          <div style={{ fontSize: 11, color: "#8a7a5a" }}>
                             {o.fromTeam} ofrece{" "}
                             <span style={{ color: "#27ae60", fontWeight: 700 }}>
                               {fmtM(o.amount)}
@@ -4380,7 +4411,7 @@ export default function FifaLiga() {
                   <div style={{ marginBottom: 20 }}>
                     <div
                       style={{
-                        color: "#8aaccc",
+                        color: "#c9b88a",
                         fontSize: 12,
                         fontWeight: 700,
                         marginBottom: 8,
@@ -4431,7 +4462,7 @@ export default function FifaLiga() {
                               {o.player.name}
                             </div>
 
-                            <div style={{ fontSize: 11, color: "#4a6a8a" }}>
+                            <div style={{ fontSize: 11, color: "#8a7a5a" }}>
                               A {o.toTeam} · ofreciste{" "}
                               <span
                                 style={{ color: "#f0c040", fontWeight: 700 }}
@@ -4452,7 +4483,7 @@ export default function FifaLiga() {
                           >
                             <span
                               style={{
-                                color: "#5a7a9a",
+                                color: "#8a7a5a",
                                 fontSize: 11,
                                 fontStyle: "italic",
                               }}
@@ -4480,7 +4511,7 @@ export default function FifaLiga() {
 
                 <div
                   style={{
-                    color: "#8aaccc",
+                    color: "#c9b88a",
                     fontSize: 12,
                     fontWeight: 700,
                     marginBottom: 8,
@@ -4492,7 +4523,7 @@ export default function FifaLiga() {
                 </div>
                 {notifications.length === 0 ? (
                   <p
-                    style={{ color: "#4a6a8a", fontSize: 13, marginBottom: 20 }}
+                    style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 20 }}
                   >
                     Sin notificaciones todavía.
                   </p>
@@ -4504,7 +4535,7 @@ export default function FifaLiga() {
                         <div
                           style={{
                             fontSize: 10,
-                            color: "#4a6a8a",
+                            color: "#8a7a5a",
                             marginTop: 4,
                           }}
                         >
@@ -4539,7 +4570,7 @@ export default function FifaLiga() {
                   <div style={{ marginTop: 20 }}>
                     <div
                       style={{
-                        color: "#8aaccc",
+                        color: "#c9b88a",
                         fontSize: 12,
                         fontWeight: 700,
                         marginBottom: 8,
@@ -4629,7 +4660,7 @@ export default function FifaLiga() {
                   <div style={{ marginTop: 20 }}>
                     <div
                       style={{
-                        color: "#8aaccc",
+                        color: "#c9b88a",
                         fontSize: 12,
                         fontWeight: 700,
                         marginBottom: 8,
@@ -4753,8 +4784,8 @@ export default function FifaLiga() {
             />
             <div
               style={{
-                background: "#0d1b2e",
-                border: "1px solid #1a3050",
+                background: "#15110a",
+                border: "1px solid #2e2615",
                 borderRadius: 14,
                 padding: "14px 16px",
                 marginBottom: 12,
@@ -4771,7 +4802,7 @@ export default function FifaLiga() {
                 🧤 Trofeo Zamora
               </div>
               {zamoraRanking.length === 0 ? (
-                <p style={{ color: "#4a6a8a", fontSize: 13 }}>Sin datos aún.</p>
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>Sin datos aún.</p>
               ) : (
                 zamoraRanking.map((z, i) => (
                   <div
@@ -4781,12 +4812,12 @@ export default function FifaLiga() {
                       alignItems: "center",
                       gap: 10,
                       padding: "7px 0",
-                      borderBottom: "1px solid #0f1e30",
+                      borderBottom: "1px solid #241e10",
                     }}
                   >
                     <span
                       style={{
-                        color: i === 0 ? "#5a9fd4" : "#4a6a8a",
+                        color: i === 0 ? "#e8c252" : "#8a7a5a",
                         fontWeight: 800,
                         minWidth: 18,
                         fontSize: 13,
@@ -4797,13 +4828,13 @@ export default function FifaLiga() {
                     <span style={{ fontWeight: 600, flex: 1, fontSize: 13 }}>
                       {z.keeper.name}
                     </span>
-                    <span style={{ color: "#4a6a8a", fontSize: 11 }}>
+                    <span style={{ color: "#8a7a5a", fontSize: 11 }}>
                       {z.teamName}
                     </span>
                     <span
                       style={{
                         fontWeight: 800,
-                        color: "#5a9fd4",
+                        color: "#e8c252",
                         fontSize: 15,
                         minWidth: 50,
                         textAlign: "right",
@@ -4845,7 +4876,7 @@ export default function FifaLiga() {
             >
               🏅 Torneo
             </h2>
-            <p style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 16 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 16 }}>
               Eliminatoria directa (solo ida), independiente de la liga regular.
               No afecta presupuesto ni estadísticas.
             </p>
@@ -4853,18 +4884,18 @@ export default function FifaLiga() {
             {!tournamentBracket && (
               <div style={{ textAlign: "center", padding: "30px 20px" }}>
                 <div style={{ fontSize: 32, marginBottom: 10 }}>🏅</div>
-                <p style={{ color: "#4a6a8a", fontSize: 13, marginBottom: 16 }}>
+                <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 16 }}>
                   Todavía no se ha sorteado ningún torneo.
                 </p>
                 {isAdmin ? (
                   <button
                     onClick={drawTournament}
-                    style={btn("linear-gradient(135deg,#1a5f96,#27ae60)")}
+                    style={btn("linear-gradient(135deg,#c9a227,#e8c252)")}
                   >
                     🎲 Sortear Torneo
                   </button>
                 ) : (
-                  <p style={{ color: "#4a6a8a", fontSize: 12 }}>
+                  <p style={{ color: "#8a7a5a", fontSize: 12 }}>
                     Solo el admin puede sortear el torneo.
                   </p>
                 )}
@@ -4889,7 +4920,7 @@ export default function FifaLiga() {
                     {champion && (
                       <div
                         style={{
-                          background: "linear-gradient(135deg,#1a3050,#2a4060)",
+                          background: "linear-gradient(135deg,#2e2615,#2a4060)",
                           border: "1px solid #f0c040",
                           borderRadius: 12,
                           padding: "14px 16px",
@@ -4913,7 +4944,7 @@ export default function FifaLiga() {
                           <div>
                             <p
                               style={{
-                                color: "#8aaccc",
+                                color: "#c9b88a",
                                 fontSize: 12,
                                 marginBottom: 10,
                               }}
@@ -4969,7 +5000,7 @@ export default function FifaLiga() {
                             <div>
                               <p
                                 style={{
-                                  color: "#8aaccc",
+                                  color: "#c9b88a",
                                   fontSize: 12,
                                   marginBottom: 12,
                                 }}
@@ -5005,13 +5036,13 @@ export default function FifaLiga() {
                                         borderRadius: 10,
                                         cursor: "pointer",
                                         background: isRevealed
-                                          ? "#0d1b2e"
+                                          ? "#15110a"
                                           : championPrize.type === "legendpick"
-                                            ? "linear-gradient(135deg,#c0392b,#0d1b2e)"
-                                            : "linear-gradient(135deg,#1a5f96,#0d1b2e)",
+                                            ? "linear-gradient(135deg,#c0392b,#15110a)"
+                                            : "linear-gradient(135deg,#c9a227,#15110a)",
                                         border: isSelected
                                           ? "2px solid #f0c040"
-                                          : "1px solid #1a3050",
+                                          : "1px solid #2e2615",
                                         display: "flex",
                                         flexDirection: "column",
                                         alignItems: "center",
@@ -5033,7 +5064,7 @@ export default function FifaLiga() {
                                           <span
                                             style={{
                                               fontSize: 10,
-                                              color: "#8aaccc",
+                                              color: "#c9b88a",
                                               marginTop: 6,
                                             }}
                                           >
@@ -5097,7 +5128,7 @@ export default function FifaLiga() {
                                   onClick={() => confirmPlayerPick(champion)}
                                   style={{
                                     ...btn(
-                                      "linear-gradient(135deg,#1a5f96,#27ae60)",
+                                      "linear-gradient(135deg,#c9a227,#e8c252)",
                                     ),
                                     fontSize: 13,
                                   }}
@@ -5151,7 +5182,7 @@ export default function FifaLiga() {
                         >
                           <div
                             style={{
-                              color: "#8aaccc",
+                              color: "#c9b88a",
                               fontSize: 11,
                               fontWeight: 700,
                               textAlign: "center",
@@ -5179,8 +5210,8 @@ export default function FifaLiga() {
                                   if (clickable) openTournamentResult(ri, mi);
                                 }}
                                 style={{
-                                  background: "#0d1b2e",
-                                  border: `1px solid ${m.winner ? "#27ae60" : "#1a3050"}`,
+                                  background: "#15110a",
+                                  border: `1px solid ${m.winner ? "#27ae60" : "#2e2615"}`,
                                   borderRadius: 10,
                                   padding: "8px 10px",
                                   cursor: clickable ? "pointer" : "default",
@@ -5266,7 +5297,7 @@ export default function FifaLiga() {
                                   <div
                                     style={{
                                       fontSize: 10,
-                                      color: "#4a6a8a",
+                                      color: "#8a7a5a",
                                       textAlign: "center",
                                       marginTop: 4,
                                     }}
@@ -5322,8 +5353,8 @@ export default function FifaLiga() {
             bottom: 0,
             left: 0,
             right: 0,
-            background: "#0b1525",
-            borderTop: "1px solid #1a3050",
+            background: "#100d08",
+            borderTop: "1px solid #2e2615",
             display: "flex",
             zIndex: 60,
             paddingBottom: "env(safe-area-inset-bottom, 0px)",
@@ -5347,7 +5378,7 @@ export default function FifaLiga() {
                 alignItems: "center",
                 gap: 2,
                 cursor: "pointer",
-                color: view === item.v ? "#1a9fe0" : "#5a7a9a",
+                color: view === item.v ? "#1a9fe0" : "#8a7a5a",
               }}
             >
               <span style={{ fontSize: 19, position: "relative" }}>
@@ -5401,7 +5432,7 @@ export default function FifaLiga() {
               alignItems: "center",
               gap: 2,
               cursor: "pointer",
-              color: view === VIEWS.TOURNAMENT ? "#1a9fe0" : "#5a7a9a",
+              color: view === VIEWS.TOURNAMENT ? "#1a9fe0" : "#8a7a5a",
             }}
           >
             <span style={{ fontSize: 19 }}>🏅</span>
@@ -5426,7 +5457,7 @@ export default function FifaLiga() {
               alignItems: "center",
               gap: 2,
               cursor: "pointer",
-              color: view === VIEWS.STATS ? "#1a9fe0" : "#5a7a9a",
+              color: view === VIEWS.STATS ? "#1a9fe0" : "#8a7a5a",
             }}
           >
             <span style={{ fontSize: 19 }}>📊</span>
@@ -5503,8 +5534,8 @@ export default function FifaLiga() {
               <div
                 onClick={(e) => e.stopPropagation()}
                 style={{
-                  background: "#0d1b2e",
-                  borderTop: "1px solid #1a3050",
+                  background: "#15110a",
+                  borderTop: "1px solid #2e2615",
                   borderRadius: "20px 20px 0 0",
                   width: "100%",
                   maxWidth: 600,
@@ -5518,7 +5549,7 @@ export default function FifaLiga() {
                   style={{
                     width: 36,
                     height: 4,
-                    background: "#1a3050",
+                    background: "#2e2615",
                     borderRadius: 2,
                     margin: "6px auto 16px",
                   }}
@@ -5572,7 +5603,7 @@ export default function FifaLiga() {
                         {player.name}
                       </span>
                     </div>
-                    <div style={{ fontSize: 12, color: "#4a6a8a" }}>
+                    <div style={{ fontSize: 12, color: "#8a7a5a" }}>
                       {player.nat} · {player.club}
                     </div>
                   </div>
@@ -5587,7 +5618,7 @@ export default function FifaLiga() {
                     flexWrap: "wrap",
                   }}
                 >
-                  <span style={{ color: "#5a7a9a" }}>
+                  <span style={{ color: "#8a7a5a" }}>
                     👥 {totalBids}{" "}
                     {totalBids === 1 ? "puja activa" : "pujas activas"}
                   </span>
@@ -5598,7 +5629,7 @@ export default function FifaLiga() {
 
                 <div
                   style={{
-                    color: "#8aaccc",
+                    color: "#c9b88a",
                     fontSize: 12,
                     fontWeight: 700,
                     marginBottom: 8,
@@ -5626,7 +5657,7 @@ export default function FifaLiga() {
                       )
                     }
                     style={{
-                      background: "#1a3050",
+                      background: "#2e2615",
                       border: "none",
                       color: "#fff",
                       borderRadius: 10,
@@ -5659,7 +5690,7 @@ export default function FifaLiga() {
                       )
                     }
                     style={{
-                      background: "#1a3050",
+                      background: "#2e2615",
                       border: "none",
                       color: "#fff",
                       borderRadius: 10,
@@ -5680,9 +5711,9 @@ export default function FifaLiga() {
                       onClick={() => setBidAmountStr(String(qa))}
                       style={{
                         flex: 1,
-                        background: "#0b1525",
-                        border: "1px solid #1a3050",
-                        color: "#8aaccc",
+                        background: "#100d08",
+                        border: "1px solid #2e2615",
+                        color: "#c9b88a",
                         borderRadius: 8,
                         padding: "8px 4px",
                         fontSize: 12,
@@ -5710,7 +5741,7 @@ export default function FifaLiga() {
                 )}
                 <button
                   onClick={confirmBid}
-                  style={btn("linear-gradient(135deg,#1a5f96,#27ae60)")}
+                  style={btn("linear-gradient(135deg,#c9a227,#e8c252)")}
                 >
                   {myBid > 0 ? "Actualizar puja" : "Confirmar puja"}
                 </button>
@@ -5735,8 +5766,8 @@ export default function FifaLiga() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "#0d1b2e",
-              borderTop: "1px solid #1a3050",
+              background: "#15110a",
+              borderTop: "1px solid #2e2615",
               borderRadius: "20px 20px 0 0",
               width: "100%",
               maxWidth: 600,
@@ -5750,7 +5781,7 @@ export default function FifaLiga() {
               style={{
                 width: 36,
                 height: 4,
-                background: "#1a3050",
+                background: "#2e2615",
                 borderRadius: 2,
                 margin: "6px auto 16px",
               }}
@@ -5790,7 +5821,7 @@ export default function FifaLiga() {
               ].map(({ label, name, val, set }, i) => (
                 <div key={i} style={{ flex: 1, textAlign: "center" }}>
                   <div
-                    style={{ color: "#5a7a9a", fontSize: 11, marginBottom: 5 }}
+                    style={{ color: "#8a7a5a", fontSize: 11, marginBottom: 5 }}
                   >
                     {label}
                   </div>
@@ -5820,8 +5851,8 @@ export default function FifaLiga() {
                     style={{
                       width: 64,
                       textAlign: "center",
-                      background: "#080d18",
-                      border: "1px solid #1a3050",
+                      background: "#0a0805",
+                      border: "1px solid #2e2615",
                       borderRadius: 10,
                       padding: 12,
                       color: "#f0c040",
@@ -5876,7 +5907,7 @@ export default function FifaLiga() {
                   <div key={teamName} style={{ marginBottom: 8 }}>
                     <div
                       style={{
-                        color: "#5a7a9a",
+                        color: "#8a7a5a",
                         fontSize: 11,
                         marginBottom: 4,
                       }}
@@ -5890,10 +5921,10 @@ export default function FifaLiga() {
                           onClick={() => setMvp(p.id)}
                           style={{
                             background:
-                              matchEvents.mvp === p.id ? "#f0c040" : "#0b1525",
+                              matchEvents.mvp === p.id ? "#f0c040" : "#100d08",
                             color:
-                              matchEvents.mvp === p.id ? "#000" : "#8aaccc",
-                            border: "1px solid #1a3050",
+                              matchEvents.mvp === p.id ? "#000" : "#c9b88a",
+                            border: "1px solid #2e2615",
                             borderRadius: 8,
                             padding: "5px 10px",
                             cursor: "pointer",
@@ -5914,15 +5945,15 @@ export default function FifaLiga() {
                 onClick={() => setPR(null)}
                 style={{
                   ...btn("transparent"),
-                  border: "1px solid #1a3050",
-                  color: "#5a7a9a",
+                  border: "1px solid #2e2615",
+                  color: "#8a7a5a",
                 }}
               >
                 Cancelar
               </button>
               <button
                 onClick={saveResult}
-                style={btn("linear-gradient(135deg,#1a5f96,#27ae60)")}
+                style={btn("linear-gradient(135deg,#c9a227,#e8c252)")}
               >
                 Guardar
               </button>
@@ -5953,8 +5984,8 @@ export default function FifaLiga() {
               <div
                 onClick={(e) => e.stopPropagation()}
                 style={{
-                  background: "#0d1b2e",
-                  borderTop: "1px solid #1a3050",
+                  background: "#15110a",
+                  borderTop: "1px solid #2e2615",
                   borderRadius: "20px 20px 0 0",
                   width: "100%",
                   maxWidth: 600,
@@ -5966,7 +5997,7 @@ export default function FifaLiga() {
                   style={{
                     width: 36,
                     height: 4,
-                    background: "#1a3050",
+                    background: "#2e2615",
                     borderRadius: 2,
                     margin: "6px auto 16px",
                   }}
@@ -5984,7 +6015,7 @@ export default function FifaLiga() {
                 </h3>
                 <p
                   style={{
-                    color: "#5a7a9a",
+                    color: "#8a7a5a",
                     fontSize: 11,
                     textAlign: "center",
                     marginBottom: 16,
@@ -6017,7 +6048,7 @@ export default function FifaLiga() {
                     <div key={i} style={{ flex: 1, textAlign: "center" }}>
                       <div
                         style={{
-                          color: "#5a7a9a",
+                          color: "#8a7a5a",
                           fontSize: 11,
                           marginBottom: 5,
                         }}
@@ -6050,8 +6081,8 @@ export default function FifaLiga() {
                         style={{
                           width: 64,
                           textAlign: "center",
-                          background: "#080d18",
-                          border: "1px solid #1a3050",
+                          background: "#0a0805",
+                          border: "1px solid #2e2615",
                           borderRadius: 10,
                           padding: 12,
                           color: "#f0c040",
@@ -6068,15 +6099,15 @@ export default function FifaLiga() {
                     onClick={() => setTournamentResultModal(null)}
                     style={{
                       ...btn("transparent"),
-                      border: "1px solid #1a3050",
-                      color: "#5a7a9a",
+                      border: "1px solid #2e2615",
+                      color: "#8a7a5a",
                     }}
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={saveTournamentResult}
-                    style={btn("linear-gradient(135deg,#1a5f96,#27ae60)")}
+                    style={btn("linear-gradient(135deg,#c9a227,#e8c252)")}
                   >
                     Guardar
                   </button>
@@ -6104,8 +6135,8 @@ export default function FifaLiga() {
             >
               <div
                 style={{
-                  background: "#0d1b2e",
-                  borderTop: "1px solid #1a3050",
+                  background: "#15110a",
+                  borderTop: "1px solid #2e2615",
                   borderRadius: "20px 20px 0 0",
                   width: "100%",
                   maxWidth: 600,
@@ -6125,7 +6156,7 @@ export default function FifaLiga() {
                 >
                   Plantilla llena
                 </h3>
-                <p style={{ color: "#5a7a9a", fontSize: 13, marginBottom: 16 }}>
+                <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 16 }}>
                   <strong style={{ color: "#f0c040" }}>
                     {swapModal.newPlayer.name}
                   </strong>{" "}
@@ -6142,7 +6173,7 @@ export default function FifaLiga() {
                         alignItems: "center",
                         gap: 10,
                         padding: "10px 0",
-                        borderBottom: "1px solid #0f1e30",
+                        borderBottom: "1px solid #241e10",
                       }}
                     >
                       <span
@@ -6162,7 +6193,7 @@ export default function FifaLiga() {
                       <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>
                         {p.name}
                       </span>
-                      <span style={{ color: "#4a6a8a", fontSize: 12 }}>
+                      <span style={{ color: "#8a7a5a", fontSize: 12 }}>
                         {p.overall}
                       </span>
                       <button
@@ -6193,8 +6224,8 @@ export default function FifaLiga() {
                   onClick={() => setSwapModal(null)}
                   style={{
                     ...btn("transparent"),
-                    border: "1px solid #1a3050",
-                    color: "#5a7a9a",
+                    border: "1px solid #2e2615",
+                    color: "#8a7a5a",
                     marginTop: 14,
                   }}
                 >
@@ -6233,8 +6264,8 @@ export default function FifaLiga() {
               <div
                 onClick={(e) => e.stopPropagation()}
                 style={{
-                  background: "#0d1b2e",
-                  borderTop: "1px solid #1a3050",
+                  background: "#15110a",
+                  borderTop: "1px solid #2e2615",
                   borderRadius: "20px 20px 0 0",
                   width: "100%",
                   maxWidth: 600,
@@ -6248,7 +6279,7 @@ export default function FifaLiga() {
                   style={{
                     width: 36,
                     height: 4,
-                    background: "#1a3050",
+                    background: "#2e2615",
                     borderRadius: 2,
                     margin: "6px auto 16px",
                   }}
@@ -6263,7 +6294,7 @@ export default function FifaLiga() {
                 >
                   Elegir jugador — {slotInfo?.label}
                 </h3>
-                <p style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 14 }}>
+                <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 14 }}>
                   Toca un jugador para colocarlo en esta posición.
                 </p>
                 {currentPlayerId && (
@@ -6303,7 +6334,7 @@ export default function FifaLiga() {
                         alignItems: "center",
                         gap: 10,
                         padding: "10px 0",
-                        borderBottom: "1px solid #0f1e30",
+                        borderBottom: "1px solid #241e10",
                         cursor: "pointer",
                         opacity: isElsewhere ? 0.5 : 1,
                       }}
@@ -6352,8 +6383,8 @@ export default function FifaLiga() {
                   onClick={() => setLineupSlotModal(null)}
                   style={{
                     ...btn("transparent"),
-                    border: "1px solid #1a3050",
-                    color: "#5a7a9a",
+                    border: "1px solid #2e2615",
+                    color: "#8a7a5a",
                     marginTop: 14,
                   }}
                 >
@@ -6384,8 +6415,8 @@ export default function FifaLiga() {
             >
               <div
                 style={{
-                  background: "#0d1b2e",
-                  borderTop: "1px solid #1a3050",
+                  background: "#15110a",
+                  borderTop: "1px solid #2e2615",
                   borderRadius: "20px 20px 0 0",
                   width: "100%",
                   maxWidth: 600,
@@ -6405,7 +6436,7 @@ export default function FifaLiga() {
                 >
                   Plantilla llena
                 </h3>
-                <p style={{ color: "#5a7a9a", fontSize: 13, marginBottom: 16 }}>
+                <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 16 }}>
                   Para añadir a{" "}
                   <strong style={{ color: "#f0c040" }}>
                     {playerPickSwapModal.newPlayer.name}
@@ -6423,7 +6454,7 @@ export default function FifaLiga() {
                         alignItems: "center",
                         gap: 10,
                         padding: "10px 0",
-                        borderBottom: "1px solid #0f1e30",
+                        borderBottom: "1px solid #241e10",
                       }}
                     >
                       <span
@@ -6443,7 +6474,7 @@ export default function FifaLiga() {
                       <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>
                         {p.name}
                       </span>
-                      <span style={{ color: "#4a6a8a", fontSize: 12 }}>
+                      <span style={{ color: "#8a7a5a", fontSize: 12 }}>
                         {p.overall}
                       </span>
                       <button
@@ -6467,8 +6498,8 @@ export default function FifaLiga() {
                   onClick={() => setPlayerPickSwapModal(null)}
                   style={{
                     ...btn("transparent"),
-                    border: "1px solid #1a3050",
-                    color: "#5a7a9a",
+                    border: "1px solid #2e2615",
+                    color: "#8a7a5a",
                     marginTop: 14,
                   }}
                 >
@@ -6496,8 +6527,8 @@ export default function FifaLiga() {
         >
           <div
             style={{
-              background: "#0d1b2e",
-              border: "1px solid #1a3050",
+              background: "#15110a",
+              border: "1px solid #2e2615",
               borderRadius: 16,
               padding: 24,
               maxWidth: 360,
@@ -6546,7 +6577,7 @@ export default function FifaLiga() {
                 {offerModal.player.overall}
               </span>
             </div>
-            <p style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 8 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 8 }}>
               De: <strong>{offerModal.teamName}</strong>. El precio es libre, el
               equipo rival puede aceptarla o rechazarla.
             </p>
@@ -6565,8 +6596,8 @@ export default function FifaLiga() {
                 onClick={() => setOfferModal(null)}
                 style={{
                   ...btn("transparent"),
-                  border: "1px solid #1a3050",
-                  color: "#5a7a9a",
+                  border: "1px solid #2e2615",
+                  color: "#8a7a5a",
                 }}
               >
                 Cancelar
@@ -6595,8 +6626,8 @@ export default function FifaLiga() {
         >
           <div
             style={{
-              background: "#0d1b2e",
-              border: "1px solid #1a3050",
+              background: "#15110a",
+              border: "1px solid #2e2615",
               borderRadius: 16,
               padding: 24,
               maxWidth: 340,
@@ -6626,7 +6657,7 @@ export default function FifaLiga() {
                   2,
               )}
             </p>
-            <p style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 20 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 20 }}>
               Mitad de su valor de cláusula actual.
             </p>
             <div style={{ display: "flex", gap: 8 }}>
@@ -6634,8 +6665,8 @@ export default function FifaLiga() {
                 onClick={() => setDiscardConfirm(null)}
                 style={{
                   ...btn("transparent"),
-                  border: "1px solid #1a3050",
-                  color: "#5a7a9a",
+                  border: "1px solid #2e2615",
+                  color: "#8a7a5a",
                 }}
               >
                 Cancelar
@@ -6670,8 +6701,8 @@ export default function FifaLiga() {
         >
           <div
             style={{
-              background: "#0d1b2e",
-              border: "1px solid #1a3050",
+              background: "#15110a",
+              border: "1px solid #2e2615",
               borderRadius: 16,
               padding: 24,
               maxWidth: 340,
@@ -6695,7 +6726,7 @@ export default function FifaLiga() {
             >
               {fmtM(clauseConfirm.clauseTotal)}
             </p>
-            <p style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 20 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 20 }}>
               El equipo rival no puede negarse.
             </p>
             <div style={{ display: "flex", gap: 8 }}>
@@ -6703,8 +6734,8 @@ export default function FifaLiga() {
                 onClick={() => setClauseConfirm(null)}
                 style={{
                   ...btn("transparent"),
-                  border: "1px solid #1a3050",
-                  color: "#5a7a9a",
+                  border: "1px solid #2e2615",
+                  color: "#8a7a5a",
                 }}
               >
                 Cancelar
@@ -6741,7 +6772,7 @@ export default function FifaLiga() {
         >
           <div
             style={{
-              background: "#0d1b2e",
+              background: "#15110a",
               border: "1px solid #c0392b",
               borderRadius: 16,
               padding: 24,
@@ -6804,7 +6835,7 @@ export default function FifaLiga() {
             >
               {fmtM(LEGEND_MARKET_PRICE)}
             </p>
-            <p style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 20 }}>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 20 }}>
               El jugador se unirá a <strong>{myTeamName}</strong>. Esta
               operación no se puede deshacer.
             </p>
@@ -6831,7 +6862,7 @@ function Crest({ emoji, size = 28 }) {
         width: size,
         height: size,
         borderRadius: 6,
-        background: "#1a3050",
+        background: "#2e2615",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -6880,8 +6911,8 @@ function EmojiCrestPicker({ emoji, size = 32, onChange }) {
           height: size,
           borderRadius: 6,
           textAlign: "center",
-          background: "#0b1525",
-          border: "1px solid #1a5f96",
+          background: "#100d08",
+          border: "1px solid #c9a227",
           color: "#e8eaf0",
           fontSize: size * 0.55,
           outline: "none",
@@ -6911,8 +6942,8 @@ function StatBlock({ title, data, field, color }) {
   return (
     <div
       style={{
-        background: "#0d1b2e",
-        border: "1px solid #1a3050",
+        background: "#15110a",
+        border: "1px solid #2e2615",
         borderRadius: 14,
         padding: "14px 16px",
         marginBottom: 12,
@@ -6929,7 +6960,7 @@ function StatBlock({ title, data, field, color }) {
         {title}
       </div>
       {data.length === 0 ? (
-        <p style={{ color: "#4a6a8a", fontSize: 13 }}>Sin datos aún.</p>
+        <p style={{ color: "#8a7a5a", fontSize: 13 }}>Sin datos aún.</p>
       ) : (
         data.map((p, i) => (
           <div
@@ -6939,12 +6970,12 @@ function StatBlock({ title, data, field, color }) {
               alignItems: "center",
               gap: 10,
               padding: "7px 0",
-              borderBottom: "1px solid #0f1e30",
+              borderBottom: "1px solid #241e10",
             }}
           >
             <span
               style={{
-                color: i === 0 ? color : "#4a6a8a",
+                color: i === 0 ? color : "#8a7a5a",
                 fontWeight: 800,
                 minWidth: 18,
                 fontSize: 13,
@@ -6955,7 +6986,7 @@ function StatBlock({ title, data, field, color }) {
             <span style={{ fontWeight: 600, flex: 1, fontSize: 13 }}>
               {p.name}
             </span>
-            <span style={{ color: "#4a6a8a", fontSize: 11 }}>{p.teamName}</span>
+            <span style={{ color: "#8a7a5a", fontSize: 11 }}>{p.teamName}</span>
             <span
               style={{
                 fontWeight: 800,
@@ -6988,7 +7019,7 @@ function LineupField({ team, onSlotTap }) {
         aspectRatio: "2/3",
         background: "linear-gradient(180deg,#1a5f3a,#0d3a22)",
         borderRadius: 14,
-        border: "1px solid #1a3050",
+        border: "1px solid #2e2615",
         overflow: "hidden",
         marginBottom: 14,
       }}
@@ -7095,7 +7126,7 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
     <div style={{ marginBottom: 16 }}>
       <div
         style={{
-          color: "#5a9fd4",
+          color: "#e8c252",
           fontSize: 12,
           fontWeight: 700,
           marginBottom: 8,
@@ -7113,8 +7144,8 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
             setSelPlayer("");
           }}
           style={{
-            background: "#0b1525",
-            border: "1px solid #1a3050",
+            background: "#100d08",
+            border: "1px solid #2e2615",
             borderRadius: 8,
             padding: "8px 10px",
             color: "#e8eaf0",
@@ -7131,8 +7162,8 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
           value={selPlayer}
           onChange={(e) => setSelPlayer(e.target.value)}
           style={{
-            background: "#0b1525",
-            border: "1px solid #1a3050",
+            background: "#100d08",
+            border: "1px solid #2e2615",
             borderRadius: 8,
             padding: "8px 10px",
             color: "#e8eaf0",
@@ -7155,7 +7186,7 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
           }}
           disabled={!selPlayer}
           style={{
-            background: selPlayer ? "#1a5f96" : "#0f1e30",
+            background: selPlayer ? "#c9a227" : "#241e10",
             color: "#fff",
             border: "none",
             borderRadius: 8,
@@ -7181,8 +7212,8 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
               <div
                 key={i}
                 style={{
-                  background: "#0b1525",
-                  border: "1px solid #1a3050",
+                  background: "#100d08",
+                  border: "1px solid #2e2615",
                   borderRadius: 14,
                   padding: "5px 10px",
                   display: "flex",
@@ -7192,7 +7223,7 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
                 }}
               >
                 {player?.name || "?"}{" "}
-                <span style={{ color: "#4a6a8a" }}>({ev.team})</span>
+                <span style={{ color: "#8a7a5a" }}>({ev.team})</span>
                 <button
                   onClick={() => onRemove(i)}
                   style={{
