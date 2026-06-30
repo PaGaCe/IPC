@@ -340,7 +340,7 @@ function generateSquad(idx, usedStars, usedNames) {
 function generateMarket(day, excludeNames = []) {
   const available = MARKET_POOL.filter((p) => !excludeNames.includes(p.name));
   return shuffle(available)
-    .slice(0, 10)
+    .slice(0, 15)
     .map((p, i) => ({
       ...p,
       marketId: `${day}_${i}_${p.name.replace(/\s/g, "_")}`,
@@ -381,19 +381,15 @@ function initTeam(name) {
 function getDayKey() {
   return new Date().toISOString().slice(0, 10);
 }
-function msUntilNextMarketRefresh() {
+function msUntilNextMarketRefresh(resetAt) {
+  if (resetAt) {
+    return Math.max(0, resetAt + 24 * 60 * 60 * 1000 - Date.now());
+  }
   const now = new Date();
-  const nextMidnightUTC = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() + 1,
-      0,
-      0,
-      0,
-    ),
+  const nextMidnight = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
   );
-  return nextMidnightUTC.getTime() - now.getTime();
+  return nextMidnight.getTime() - Date.now();
 }
 function fmtCountdown(ms) {
   if (ms <= 0) return "00:00:00";
@@ -449,6 +445,7 @@ export default function FifaLiga() {
   });
 
   const [marketDay, setMarketDay] = useState(null);
+  const [marketResetAt, setMarketResetAt] = useState(null);
   const [marketCountdownMs, setMarketCountdownMs] = useState(
     msUntilNextMarketRefresh(),
   );
@@ -576,6 +573,7 @@ export default function FifaLiga() {
     setDraftDone(!!s.draftDone);
     if (s.marketDay) setMarketDay(s.marketDay);
     if (s.marketList) setMarketList(s.marketList);
+    if (s.marketResetAt !== undefined) setMarketResetAt(s.marketResetAt);
     if (s.bids) setBids(s.bids);
     if (s.marketHistory) setMarketHistory(s.marketHistory);
     if (s.offers) setOffers(s.offers);
@@ -653,13 +651,13 @@ export default function FifaLiga() {
   // ── Market countdown: ticks every second while viewing the market ──
   useEffect(() => {
     if (view !== VIEWS.MARKET) return;
-    setMarketCountdownMs(msUntilNextMarketRefresh());
+    setMarketCountdownMs(msUntilNextMarketRefresh(marketResetAt));
     const tick = setInterval(
-      () => setMarketCountdownMs(msUntilNextMarketRefresh()),
+      () => setMarketCountdownMs(msUntilNextMarketRefresh(marketResetAt)),
       1000,
     );
     return () => clearInterval(tick);
-  }, [view]);
+  }, [view, marketResetAt]);
 
   const save = useCallback(
     async (patch) => {
@@ -671,6 +669,7 @@ export default function FifaLiga() {
         draftDone,
         marketDay,
         marketList,
+        marketResetAt,
         bids,
         marketHistory,
         offers,
@@ -691,6 +690,7 @@ export default function FifaLiga() {
       draftDone,
       marketDay,
       marketList,
+      marketResetAt,
       bids,
       marketHistory,
       offers,
@@ -734,6 +734,7 @@ export default function FifaLiga() {
       draftDone: false,
       marketDay: null,
       marketList: [],
+      marketResetAt: null,
       bids: {},
       marketHistory: [],
       offers: [],
@@ -937,6 +938,8 @@ export default function FifaLiga() {
     setView(VIEWS.TABLE);
     setMarketDay(day);
     setMarketList(mList);
+    const now = Date.now();
+    setMarketResetAt(now);
     setBids({});
     save({
       teams: liveTeams,
@@ -944,6 +947,7 @@ export default function FifaLiga() {
       started: true,
       marketDay: day,
       marketList: mList,
+      marketResetAt: now,
       bids: {},
     });
   };
@@ -1251,6 +1255,7 @@ export default function FifaLiga() {
   };
   const resolveAuctions = () => {
     if (!isAdmin) return;
+    const now = Date.now();
     const today = getDayKey();
     let updatedTeams = [...teams];
     const newHistory = [...marketHistory];
@@ -1320,12 +1325,14 @@ export default function FifaLiga() {
     setMarketList(mList);
     setBids({});
     setMarketHistory(newHistory);
+    setMarketResetAt(now);
     save({
       teams: updatedTeams,
       marketDay: today,
       marketList: mList,
       bids: {},
       marketHistory: newHistory,
+      marketResetAt: now,
     });
   };
 
