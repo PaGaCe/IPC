@@ -3816,7 +3816,7 @@ export default function FifaLiga() {
                 </h3>
                 {[...marketHistory]
                   .reverse()
-                  .slice(0, 10)
+                  .slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
                   .map((h, i) => (
                     <div
                       key={i}
@@ -4267,7 +4267,7 @@ export default function FifaLiga() {
                     </div>
                     {[...marketHistory]
                       .reverse()
-                      .slice(0, 10)
+                      .slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
                       .map((h, i) => (
                         <div
                           key={i}
