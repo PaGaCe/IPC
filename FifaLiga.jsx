@@ -471,7 +471,7 @@ function getDayKey() {
 }
 function msUntilNextMarketRefresh(resetAt) {
   if (resetAt) {
-    return Math.max(0, resetAt + 24 * 60 * 60 * 1000 - Date.now());
+    return Math.max(0, resetAt + 12 * 60 * 60 * 1000 - Date.now());
   }
   const now = new Date();
   const nextMidnight = new Date(
