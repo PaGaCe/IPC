@@ -3505,7 +3505,7 @@ export default function FifaLiga() {
                     disabled={blocked}
                     style={{
                       ...btn(blocked ? "#1a2030" : undefined),
-                      color: blocked ? "#4a5a6a" : "#4a3f04",
+                      color: blocked ? "#4a5a6a" : "#443b03",
                       cursor: blocked ? "not-allowed" : "pointer",
                     }}
                   >
