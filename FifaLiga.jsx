@@ -37,6 +37,65 @@ import en from "i18n-iso-countries/langs/en.json";
 
 countries.registerLocale(en);
 
+const clubLogos = {
+  "Real Madrid": "./src/assets/clubs/realmadrid.png",
+  Barcelona: "./src/assets/clubs/barcelona.png",
+  "Atletico de Madrid": "./src/assets/clubs/atlmadrid.png",
+  "Athletic Club": "./src/assets/clubs/athletic.png",
+  Arsenal: "./src/assets/clubs/arsenal.png",
+  Villarreal: "./src/assets/clubs/villarreal.png",
+  "Vancouver Whitecaps": "./src/assets/clubs/vancouver.png",
+  Tottenham: "./src/assets/clubs/tottenham.png",
+  Sunderland: "./src/assets/clubs/sunderland.png",
+  "Sporting CP": "./src/assets/clubs/sporting.png",
+  Sassuolo: "./src/assets/clubs/sassuolo.png",
+  Roma: "./src/assets/clubs/roma.png",
+  "Real Sociedad": "./src/assets/clubs/realsociedad.png",
+  "RB Leipzig": "./src/assets/clubs/rbleipzig.png",
+  "Rayo Vallecano": "./src/assets/clubs/rayovallecano.png",
+  "RC Lens": "./src/assets/clubs/racinglens.png",
+  PSV: "./src/assets/clubs/psv.png",
+  PSG: "./src/assets/clubs/psg.png",
+  Porto: "./src/assets/clubs/porto.png",
+  "Olympique Lyonnais": "./src/assets/clubs/olympiquelyon.png",
+  "Olympique Marseille": "./src/assets/clubs/olympiquemarsella.png",
+  "Nottingham Forest": "./src/assets/clubs/nottingham_forest.png",
+  "Newcastle United": "./src/assets/clubs/newcastle.png",
+  Napoli: "./src/assets/clubs/napoli.png",
+  "AS Monaco": "./src/assets/clubs/monaco.png",
+  "AC Milan": "./src/assets/clubs/milan.png",
+  "Manchester United": "./src/assets/clubs/manchesterunited.png",
+  "Manchester City": "./src/assets/clubs/manchestercity.png",
+  "LA FC": "./src/assets/clubs/losangeles.png",
+  Liverpool: "./src/assets/clubs/liverpool.png",
+  Lazio: "./src/assets/clubs/lazio.png",
+  Juventus: "./src/assets/clubs/juventus.png",
+  "Inter Miami": "./src/assets/clubs/intermiami.png",
+  "Inter Milan": "./src/assets/clubs/inter.png",
+  Galatasaray: "./src/assets/clubs/galatasaray.png",
+  Fiorentina: "./src/assets/clubs/fiorentina.png",
+  Fenerbahçe: "./src/assets/clubs/fenerbahce.png",
+  Everton: "./src/assets/clubs/everton.png",
+  "Eintracht Frankfurt": "./src/assets/clubs/eintrachtfrankfurt.png",
+  "Crystal Palace": "./src/assets/clubs/crystalpalace.png",
+  Como: "./src/assets/clubs/como.png",
+  Chelsea: "./src/assets/clubs/chelsea.png",
+  Celta: "./src/assets/clubs/celta.png",
+  Brighton: "./src/assets/clubs/brighton.png",
+  Brentford: "./src/assets/clubs/brentford.png",
+  "Borussia Dortmund": "./src/assets/clubs/borussiadortmund.png",
+  Bologna: "./src/assets/clubs/bologna.png",
+  "Real Betis": "./src/assets/clubs/betis.png",
+  Besiktas: "./src/assets/clubs/besiktas.png",
+  Benfica: "./src/assets/clubs/benfica.png",
+  "Bayern Munich": "./src/assets/clubs/bayernmunchen.png",
+  "Bayer Leverkusen": "./src/assets/clubs/bayerleverkusen.png",
+  Atalanta: "./src/assets/clubs/atalanta.png",
+  "Aston Villa": "./src/assets/clubs/astonvilla.png",
+  "Al Nassr": "./src/assets/clubs/al_nassr.png",
+  "Al Hilal": "./src/assets/clubs/al_hilal.png",
+  "Al Ahli": "./src/assets/clubs/al_ahli_saudi.png",
+};
 // ─── VIEWS ──────────────────────────────────────────────────────────────────
 const VIEWS = {
   LOGIN: "login",
@@ -2326,7 +2385,13 @@ export default function FifaLiga() {
             <CountryFlag country={p.nat} />
           </span>
           <span>•</span>
-          <span>🏟️ {p.club}</span>
+          <img
+            src={p.clubLogo}
+            alt={p.club}
+            title={p.club}
+            width={18}
+            height={18}
+          />
         </div>
         {mode === "own" && !isStar && (
           <div
@@ -4044,9 +4109,13 @@ export default function FifaLiga() {
                           {player.name}
                         </span>
                       </div>
-                      <div style={{ fontSize: 11, color: "#8a7a5a" }}>
-                        {player.club}
-                      </div>
+                      <img
+                        src={p.clubLogo}
+                        alt={p.club}
+                        title={p.club}
+                        width={18}
+                        height={18}
+                      />
                       <div
                         style={{
                           display: "flex",
