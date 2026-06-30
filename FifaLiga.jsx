@@ -3867,6 +3867,26 @@ export default function FifaLiga() {
                       </span>
                     </div>
                   ))}
+
+                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                  <button
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    Anterior
+                  </button>
+
+                  <span>
+                    Página {page} de {totalPages}
+                  </span>
+
+                  <button
+                    disabled={page === totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Siguiente
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -4300,6 +4320,26 @@ export default function FifaLiga() {
                           </span>
                         </div>
                       ))}
+
+                    <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                      <button
+                        disabled={page === 1}
+                        onClick={() => setPage((p) => p - 1)}
+                      >
+                        Anterior
+                      </button>
+
+                      <span>
+                        Página {page} de {totalPages}
+                      </span>
+
+                      <button
+                        disabled={page === totalPages}
+                        onClick={() => setPage((p) => p + 1)}
+                      >
+                        Siguiente
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
