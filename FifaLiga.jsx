@@ -16,6 +16,21 @@ import {
   LEGEND_POOL,
 } from "./PlayersPool";
 import countries from "i18n-iso-countries";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  TouchSensor,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import en from "i18n-iso-countries/langs/en.json";
 
@@ -254,6 +269,78 @@ const POS_GROUP = {
   EI: ["EI", "ED"],
   DC: ["DC"],
 };
+// Cada formación define slots con posición visual en el campo (0-100, 0=arriba/portería rival, 100=abajo/tu portería)
+const FORMATIONS = {
+  "4-3-3": [
+    { id: "GK", x: 50, y: 92, label: "POR" },
+    { id: "LB", x: 15, y: 72, label: "LI" },
+    { id: "CB1", x: 38, y: 78, label: "DFC" },
+    { id: "CB2", x: 62, y: 78, label: "DFC" },
+    { id: "RB", x: 85, y: 72, label: "LD" },
+    { id: "CM1", x: 30, y: 52, label: "MC" },
+    { id: "CM2", x: 50, y: 46, label: "MC" },
+    { id: "CM3", x: 70, y: 52, label: "MC" },
+    { id: "LW", x: 18, y: 20, label: "EI" },
+    { id: "ST", x: 50, y: 14, label: "DC" },
+    { id: "RW", x: 82, y: 20, label: "ED" },
+  ],
+  "4-4-2": [
+    { id: "GK", x: 50, y: 92, label: "POR" },
+    { id: "LB", x: 15, y: 72, label: "LI" },
+    { id: "CB1", x: 38, y: 78, label: "DFC" },
+    { id: "CB2", x: 62, y: 78, label: "DFC" },
+    { id: "RB", x: 85, y: 72, label: "LD" },
+    { id: "LM", x: 15, y: 46, label: "MI" },
+    { id: "CM1", x: 38, y: 50, label: "MC" },
+    { id: "CM2", x: 62, y: 50, label: "MC" },
+    { id: "RM", x: 85, y: 46, label: "MD" },
+    { id: "ST1", x: 38, y: 16, label: "DC" },
+    { id: "ST2", x: 62, y: 16, label: "DC" },
+  ],
+  "3-5-2": [
+    { id: "GK", x: 50, y: 92, label: "POR" },
+    { id: "CB1", x: 25, y: 76, label: "DFC" },
+    { id: "CB2", x: 50, y: 80, label: "DFC" },
+    { id: "CB3", x: 75, y: 76, label: "DFC" },
+    { id: "LM", x: 10, y: 48, label: "MI" },
+    { id: "CM1", x: 34, y: 54, label: "MC" },
+    { id: "CM2", x: 50, y: 48, label: "MC" },
+    { id: "CM3", x: 66, y: 54, label: "MC" },
+    { id: "RM", x: 90, y: 48, label: "MD" },
+    { id: "ST1", x: 38, y: 16, label: "DC" },
+    { id: "ST2", x: 62, y: 16, label: "DC" },
+  ],
+  "4-2-3-1": [
+    { id: "GK", x: 50, y: 92, label: "POR" },
+    { id: "LB", x: 15, y: 72, label: "LI" },
+    { id: "CB1", x: 38, y: 78, label: "DFC" },
+    { id: "CB2", x: 62, y: 78, label: "DFC" },
+    { id: "RB", x: 85, y: 72, label: "LD" },
+    { id: "CDM1", x: 38, y: 58, label: "MCD" },
+    { id: "CDM2", x: 62, y: 58, label: "MCD" },
+    { id: "LW", x: 18, y: 34, label: "MI" },
+    { id: "CAM", x: 50, y: 30, label: "MCO" },
+    { id: "RW", x: 82, y: 34, label: "MD" },
+    { id: "ST", x: 50, y: 12, label: "DC" },
+  ],
+  "3-4-3": [
+    { id: "GK", x: 50, y: 92, label: "POR" },
+    { id: "CB1", x: 25, y: 76, label: "DFC" },
+    { id: "CB2", x: 50, y: 80, label: "DFC" },
+    { id: "CB3", x: 75, y: 76, label: "DFC" },
+    { id: "LM", x: 12, y: 50, label: "MI" },
+    { id: "CM1", x: 38, y: 52, label: "MC" },
+    { id: "CM2", x: 62, y: 52, label: "MC" },
+    { id: "RM", x: 88, y: 50, label: "MD" },
+    { id: "LW", x: 18, y: 18, label: "EI" },
+    { id: "ST", x: 50, y: 12, label: "DC" },
+    { id: "RW", x: 82, y: 18, label: "ED" },
+  ],
+};
+const FORMATION_NAMES = Object.keys(FORMATIONS);
+function findPlayerInTeam(team, playerId) {
+  return allPlayersOf(team).find((p) => p.id === playerId) || null;
+}
 function generateSquad(idx, usedStars, usedNames) {
   const availableStars = DRAFT_STARS.filter((p) => !usedStars.includes(p.name));
   // Hard fallback: if every star is taken (more teams than stars), allow reuse with a unique suffix
@@ -481,6 +568,8 @@ export default function FifaLiga() {
   const [offerModal, setOfferModal] = useState(null); // { teamName, player } being offered on
   const [offerAmountStr, setOfferAmountStr] = useState("");
   const [viewingTeam, setViewingTeam] = useState(null); // team being inspected read-only from TABLE
+  const [squadTab, setSquadTab] = useState("lineup"); // "lineup" | "squad"
+  const [lineupSlotModal, setLineupSlotModal] = useState(null); // {teamName, slotId} mientras eliges jugador para un slot
 
   // Bid modal (new simplified flow)
   const [bidModal, setBidModal] = useState(null); // { player } from market
@@ -1453,6 +1542,65 @@ export default function FifaLiga() {
       "success",
     );
   };
+  const reorderSquad = (teamName, oldIndex, newIndex) => {
+    const updatedTeams = teams.map((t) => {
+      if (t.name !== teamName) return t;
+      const newSquadArr = arrayMove(t.squad.squad, oldIndex, newIndex);
+      return { ...t, squad: { ...t.squad, squad: newSquadArr } };
+    });
+    setTeams(updatedTeams);
+    save({ teams: updatedTeams });
+  };
+  const setLineupFormation = (teamName, formation) => {
+    const updatedTeams = teams.map((t) => {
+      if (t.name !== teamName) return t;
+      return { ...t, lineup: { formation, slots: {} } }; // cambiar formación resetea las posiciones
+    });
+    setTeams(updatedTeams);
+    save({ teams: updatedTeams });
+  };
+
+  const assignPlayerToSlot = (teamName, slotId, playerId) => {
+    const updatedTeams = teams.map((t) => {
+      if (t.name !== teamName) return t;
+      const currentLineup = t.lineup || {
+        formation: FORMATION_NAMES[0],
+        slots: {},
+      };
+      // Si el jugador ya estaba en otro slot, lo quitamos de ahí primero (no puede estar en dos sitios)
+      const cleanedSlots = Object.fromEntries(
+        Object.entries(currentLineup.slots).filter(
+          ([, pid]) => pid !== playerId,
+        ),
+      );
+      return {
+        ...t,
+        lineup: {
+          ...currentLineup,
+          slots: { ...cleanedSlots, [slotId]: playerId },
+        },
+      };
+    });
+    setTeams(updatedTeams);
+    save({ teams: updatedTeams });
+    setLineupSlotModal(null);
+  };
+
+  const clearSlot = (teamName, slotId) => {
+    const updatedTeams = teams.map((t) => {
+      if (t.name !== teamName) return t;
+      const currentLineup = t.lineup || {
+        formation: FORMATION_NAMES[0],
+        slots: {},
+      };
+      const newSlots = { ...currentLineup.slots };
+      delete newSlots[slotId];
+      return { ...t, lineup: { ...currentLineup, slots: newSlots } };
+    });
+    setTeams(updatedTeams);
+    save({ teams: updatedTeams });
+    setLineupSlotModal(null);
+  };
   const swapPlayer = (teamName, removeId, newPlayer, amount) => {
     const updatedTeams = teams.map((t) => {
       if (t.name !== teamName) return t;
@@ -2322,6 +2470,80 @@ export default function FifaLiga() {
       </div>
     );
   };
+
+  function SortablePlayerRow({ p, teamName, mode, ...rest }) {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: p.id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      background: isDragging ? "#0f2138" : "transparent",
+    };
+    return (
+      <div ref={setNodeRef} style={style} {...attributes}>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <div
+            {...listeners}
+            style={{
+              padding: "10px 8px 10px 0",
+              cursor: "grab",
+              color: "#3a5a7a",
+              touchAction: "none",
+            }}
+          >
+            ⠿
+          </div>
+          <div style={{ flex: 1 }}>
+            <PlayerRow p={p} teamName={teamName} mode={mode} {...rest} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function SquadDndList({ teamName, squad, onReorder }) {
+    const sensors = useSensors(
+      useSensor(PointerSensor),
+      useSensor(TouchSensor, {
+        activationConstraint: { delay: 150, tolerance: 5 },
+      }),
+    );
+    const handleDragEnd = (event) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = squad.findIndex((p) => p.id === active.id);
+      const newIndex = squad.findIndex((p) => p.id === over.id);
+      onReorder(teamName, oldIndex, newIndex, squad); // ← pasamos squad (bench) también
+    };
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={squad.map((p) => p.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {squad.map((p) => (
+            <SortablePlayerRow
+              key={p.id}
+              p={p}
+              teamName={teamName}
+              mode="own"
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
+    );
+  }
 
   const getCountryCode = (input) => {
     if (!input) return null;
@@ -3399,6 +3621,14 @@ export default function FifaLiga() {
                 </p>
               );
             const allP = allPlayersOf(t);
+            const lineup = t.lineup || {
+              formation: FORMATION_NAMES[0],
+              slots: {},
+            };
+            const placedIds = Object.values(lineup.slots).filter((pid) =>
+              allP.some((p) => p.id === pid),
+            );
+
             return (
               <div>
                 {!isOwn && (
@@ -3428,7 +3658,7 @@ export default function FifaLiga() {
                     marginBottom: 6,
                   }}
                 >
-                  {isOwn ? "Tu plantilla" : `Plantilla de ${t.name}`}
+                  {isOwn ? "Tu equipo" : t.name}
                 </h2>
                 {!isOwn && (
                   <p
@@ -3438,13 +3668,14 @@ export default function FifaLiga() {
                     es tuya.
                   </p>
                 )}
+
                 <div style={card}>
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      marginBottom: 12,
+                      marginBottom: 14,
                     }}
                   >
                     <div
@@ -3468,62 +3699,160 @@ export default function FifaLiga() {
                         </div>
                       </div>
                     </div>
-                    {isOwn ?? (
-                      <span
-                        style={{
-                          color: "#27ae60",
-                          fontWeight: 700,
-                          fontSize: 14,
-                        }}
-                      >
-                        {fmtM(t.budget)}
-                      </span>
-                    )}
-                  </div>
-                  {t.squad.star && (
-                    <div
+                    <span
                       style={{
-                        background: "#0a1520",
-                        borderRadius: 10,
-                        padding: "10px 12px",
-                        marginBottom: 10,
+                        color: "#27ae60",
+                        fontWeight: 700,
+                        fontSize: 14,
                       }}
                     >
+                      {fmtM(t.budget)}
+                    </span>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                    <button
+                      onClick={() => setSquadTab("lineup")}
+                      style={{ flex: 1, ...pill(squadTab === "lineup") }}
+                    >
+                      ⚽ Alineación
+                    </button>
+                    <button
+                      onClick={() => setSquadTab("squad")}
+                      style={{ flex: 1, ...pill(squadTab === "squad") }}
+                    >
+                      👥 Plantilla
+                    </button>
+                  </div>
+
+                  {squadTab === "lineup" &&
+                    (() => {
+                      const bench = allP.filter(
+                        (p) => !placedIds.includes(p.id),
+                      );
+                      return (
+                        <div>
+                          {isOwn && (
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 6,
+                                flexWrap: "wrap",
+                                marginBottom: 12,
+                              }}
+                            >
+                              {FORMATION_NAMES.map((f) => (
+                                <button
+                                  key={f}
+                                  onClick={() => setLineupFormation(t.name, f)}
+                                  style={pill(lineup.formation === f)}
+                                >
+                                  {f}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <LineupField
+                            team={t}
+                            onSlotTap={
+                              isOwn
+                                ? (slotId) =>
+                                    setLineupSlotModal({
+                                      teamName: t.name,
+                                      slotId,
+                                    })
+                                : () => {}
+                            }
+                          />
+                          <div
+                            style={{
+                              color: "#4a6a8a",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              marginBottom: 4,
+                            }}
+                          >
+                            SUPLENTES ({bench.length})
+                          </div>
+                          {bench.length === 0 && (
+                            <p
+                              style={{
+                                color: "#3a5a7a",
+                                fontSize: 12,
+                                marginBottom: 8,
+                              }}
+                            >
+                              Todos los jugadores están en el campo.
+                            </p>
+                          )}
+                          {bench.map((p, i) => (
+                            <PlayerRow
+                              key={i}
+                              p={p}
+                              teamName={t.name}
+                              mode={isOwn ? "own" : "other"}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })()}
+
+                  {squadTab === "squad" && (
+                    <div>
+                      {t.squad.star && (
+                        <div
+                          style={{
+                            background: "#0a1520",
+                            borderRadius: 10,
+                            padding: "10px 12px",
+                            marginBottom: 10,
+                          }}
+                        >
+                          <div
+                            style={{
+                              color: "#f0c040",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              marginBottom: 6,
+                            }}
+                          >
+                            ⭐ ESTRELLA
+                          </div>
+                          <PlayerRow
+                            p={t.squad.star}
+                            teamName={t.name}
+                            mode={isOwn ? "own" : "other"}
+                          />
+                        </div>
+                      )}
                       <div
                         style={{
-                          color: "#f0c040",
+                          color: "#4a6a8a",
                           fontSize: 11,
                           fontWeight: 700,
-                          marginBottom: 6,
+                          marginBottom: 4,
                         }}
                       >
-                        ⭐ ESTRELLA
+                        PLANTILLA
                       </div>
-                      <PlayerRow
-                        p={t.squad.star}
-                        teamName={t.name}
-                        mode={isOwn ? "own" : "other"}
-                      />
+                      {isOwn ? (
+                        <SquadDndList
+                          teamName={t.name}
+                          squad={t.squad.squad}
+                          onReorder={reorderSquad}
+                        />
+                      ) : (
+                        t.squad.squad.map((p, i) => (
+                          <PlayerRow
+                            key={i}
+                            p={p}
+                            teamName={t.name}
+                            mode="other"
+                          />
+                        ))
+                      )}
                     </div>
                   )}
-                  <div
-                    style={{
-                      color: "#4a6a8a",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      marginBottom: 4,
-                    }}
-                  >
-                    PLANTILLA
-                  </div>
-                  {t.squad.squad.map((p, i) => (
-                    <PlayerRow
-                      key={i}
-                      p={p}
-                      teamName={t.name}
-                      mode={isOwn ? "own" : "other"}
-                    />
-                  ))}
                 </div>
               </div>
             );
@@ -5876,6 +6205,165 @@ export default function FifaLiga() {
           );
         })()}
 
+      {lineupSlotModal &&
+        (() => {
+          const t = teams.find((x) => x.name === lineupSlotModal.teamName);
+          if (!t) return null;
+          const allP = allPlayersOf(t);
+          const lineup = t.lineup || {
+            formation: FORMATION_NAMES[0],
+            slots: {},
+          };
+          const currentPlayerId = lineup.slots[lineupSlotModal.slotId];
+          const slotInfo = (FORMATIONS[lineup.formation] || []).find(
+            (s) => s.id === lineupSlotModal.slotId,
+          );
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.82)",
+                zIndex: 230,
+                display: "flex",
+                alignItems: "flex-end",
+              }}
+              onClick={() => setLineupSlotModal(null)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "#0d1b2e",
+                  borderTop: "1px solid #1a3050",
+                  borderRadius: "20px 20px 0 0",
+                  width: "100%",
+                  maxWidth: 600,
+                  margin: "0 auto",
+                  padding: "10px 18px 28px",
+                  maxHeight: "75vh",
+                  overflowY: "auto",
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 4,
+                    background: "#1a3050",
+                    borderRadius: 2,
+                    margin: "6px auto 16px",
+                  }}
+                />
+                <h3
+                  style={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    marginBottom: 4,
+                    fontSize: 16,
+                  }}
+                >
+                  Elegir jugador — {slotInfo?.label}
+                </h3>
+                <p style={{ color: "#5a7a9a", fontSize: 12, marginBottom: 14 }}>
+                  Toca un jugador para colocarlo en esta posición.
+                </p>
+                {currentPlayerId && (
+                  <button
+                    onClick={() =>
+                      clearSlot(
+                        lineupSlotModal.teamName,
+                        lineupSlotModal.slotId,
+                      )
+                    }
+                    style={{
+                      ...btn("transparent"),
+                      border: "1px solid #c0392b",
+                      color: "#c0392b",
+                      marginBottom: 14,
+                    }}
+                  >
+                    Quitar jugador de esta posición
+                  </button>
+                )}
+                {allP.map((p) => {
+                  const isHere = p.id === currentPlayerId;
+                  const isElsewhere =
+                    !isHere && Object.values(lineup.slots).includes(p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() =>
+                        assignPlayerToSlot(
+                          lineupSlotModal.teamName,
+                          lineupSlotModal.slotId,
+                          p.id,
+                        )
+                      }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "10px 0",
+                        borderBottom: "1px solid #0f1e30",
+                        cursor: "pointer",
+                        opacity: isElsewhere ? 0.5 : 1,
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: posColor(p.pos || p.position),
+                          color: "#fff",
+                          borderRadius: 4,
+                          padding: "2px 6px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          minWidth: 36,
+                          textAlign: "center",
+                        }}
+                      >
+                        {p.pos || p.position}
+                      </span>
+                      <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>
+                        {p.name}
+                        {isHere && (
+                          <span style={{ color: "#27ae60", fontSize: 11 }}>
+                            {" "}
+                            (aquí)
+                          </span>
+                        )}
+                        {isElsewhere && (
+                          <span style={{ color: "#f0c040", fontSize: 11 }}>
+                            {" "}
+                            (en otra posición)
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: 800,
+                          color: ratingColor(p.overall),
+                        }}
+                      >
+                        {p.overall}
+                      </span>
+                    </div>
+                  );
+                })}
+                <button
+                  onClick={() => setLineupSlotModal(null)}
+                  style={{
+                    ...btn("transparent"),
+                    border: "1px solid #1a3050",
+                    color: "#5a7a9a",
+                    marginTop: 14,
+                  }}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
       {/* ── Player Pick Swap Modal (champion's squad is full) ── */}
       {playerPickSwapModal &&
         (() => {
@@ -6482,6 +6970,116 @@ function StatBlock({ title, data, field, color }) {
           </div>
         ))
       )}
+    </div>
+  );
+}
+
+function LineupField({ team, onSlotTap }) {
+  const lineup = team.lineup || { formation: FORMATION_NAMES[0], slots: {} };
+  const slots = FORMATIONS[lineup.formation] || FORMATIONS[FORMATION_NAMES[0]];
+  const allP = allPlayersOf(team);
+  const validIds = new Set(allP.map((p) => p.id));
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        aspectRatio: "2/3",
+        background: "linear-gradient(180deg,#1a5f3a,#0d3a22)",
+        borderRadius: 14,
+        border: "1px solid #1a3050",
+        overflow: "hidden",
+        marginBottom: 14,
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: 0,
+          right: 0,
+          height: 1,
+          background: "rgba(255,255,255,0.15)",
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          width: 60,
+          height: 60,
+          marginLeft: -30,
+          marginTop: -30,
+          border: "1px solid rgba(255,255,255,0.15)",
+          borderRadius: "50%",
+        }}
+      />
+
+      {slots.map((slot) => {
+        const rawPlayerId = lineup.slots[slot.id];
+        const playerId =
+          rawPlayerId && validIds.has(rawPlayerId) ? rawPlayerId : null; // ← descarta huérfanos
+        const player = playerId ? allP.find((p) => p.id === playerId) : null;
+        return (
+          <div
+            key={slot.id}
+            onClick={() => onSlotTap(slot.id)}
+            style={{
+              position: "absolute",
+              left: `${slot.x}%`,
+              top: `${slot.y}%`,
+              transform: "translate(-50%,-50%)",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 2,
+              width: 64,
+            }}
+          >
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                background: player
+                  ? ratingColor(player.overall)
+                  : "rgba(255,255,255,0.12)",
+                border: player
+                  ? "2px solid #fff"
+                  : "2px dashed rgba(255,255,255,0.4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: 14,
+                color: player ? "#000" : "rgba(255,255,255,0.6)",
+              }}
+            >
+              {player ? player.overall : "+"}
+            </div>
+            <div
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: "#fff",
+                textAlign: "center",
+                background: "rgba(0,0,0,0.55)",
+                borderRadius: 4,
+                padding: "1px 5px",
+                whiteSpace: "nowrap",
+                maxWidth: 64,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {player ? player.name.split(" ").slice(-1)[0] : slot.label}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
