@@ -1958,9 +1958,7 @@ export default function FifaLiga() {
     .sort((a, b) => a.ga - b.ga);
   const zamoraWinner = zamoraRanking[0]?.keeper || null;
 
-  const [prizesAwarded, setPrizesAwarded] = useState(false);
-  const awardSeasonPrizes = () => {
-    if (prizesAwarded) return;
+  const startNewSeason = () => {
     let updatedTeams = [...teams];
     const give = (playerId, amount) => {
       updatedTeams = updatedTeams.map((t) => {
@@ -1972,16 +1970,63 @@ export default function FifaLiga() {
     if (topAssists[0]) give(topAssists[0].id, SEASON_PRIZE_TOPASSIST);
     if (topMvps[0]) give(topMvps[0].id, SEASON_PRIZE_MVP);
     if (zamoraWinner) give(zamoraWinner.id, SEASON_PRIZE_ZAMORA);
-    // Final standings prize: 1st = 50M, each subsequent position -30% of the previous
     sorted.forEach((t, idx) => {
       const prize = finalRankingPrize(idx);
       updatedTeams = updatedTeams.map((u) =>
         u.name === t.name ? { ...u, budget: u.budget + prize } : u,
       );
     });
+
+    const resetPlayerStats = (p) => ({ ...p, goals: 0, assists: 0, mvps: 0 });
+    updatedTeams = updatedTeams.map((t) => ({
+      ...t,
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      gf: 0,
+      ga: 0,
+      points: 0,
+      squad: t.squad
+        ? {
+            star: t.squad.star ? resetPlayerStats(t.squad.star) : t.squad.star,
+            squad: (t.squad.squad || []).map(resetPlayerStats),
+          }
+        : t.squad,
+    }));
+
+    const newFixtures = [];
+    for (let i = 0; i < updatedTeams.length; i++)
+      for (let j = i + 1; j < updatedTeams.length; j++) {
+        newFixtures.push({
+          home: updatedTeams[i].name,
+          away: updatedTeams[j].name,
+          homeGoals: "",
+          awayGoals: "",
+          played: false,
+          scorers: [],
+          assists: [],
+          mvp: null,
+        });
+        newFixtures.push({
+          home: updatedTeams[j].name,
+          away: updatedTeams[i].name,
+          homeGoals: "",
+          awayGoals: "",
+          played: false,
+          scorers: [],
+          assists: [],
+          mvp: null,
+        });
+      }
+
     setTeams(updatedTeams);
-    setPrizesAwarded(true);
-    save({ teams: updatedTeams });
+    setFixtures(newFixtures);
+    save({ teams: updatedTeams, fixtures: newFixtures });
+    showToast(
+      "🆕 ¡Nueva temporada iniciada! Premios repartidos y calendario reiniciado.",
+      "success",
+    );
   };
 
   const myTeamObj = teams.find((t) => t.name === myTeamName);
@@ -2459,7 +2504,7 @@ export default function FifaLiga() {
                 }}
               />
             </div>
-            {seasonOver && !prizesAwarded && (
+            {seasonOver && (
               <div
                 style={{
                   marginTop: 10,
@@ -2479,8 +2524,8 @@ export default function FifaLiga() {
                 >
                   🏆 ¡Temporada terminada!
                 </div>
-                <button onClick={awardSeasonPrizes} style={btn("#8e44ad")}>
-                  Repartir premios individuales
+                <button onClick={startNewSeason} style={btn("#8e44ad")}>
+                  Repartir premios e iniciar nueva temporada
                 </button>
               </div>
             )}
