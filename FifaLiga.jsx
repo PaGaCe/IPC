@@ -3736,15 +3736,6 @@ export default function FifaLiga() {
                         </div>
                       </div>
                     </div>
-                    <span
-                      style={{
-                        color: "#27ae60",
-                        fontWeight: 700,
-                        fontSize: 14,
-                      }}
-                    >
-                      {fmtM(t.budget)}
-                    </span>
                   </div>
 
                   <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
