@@ -2066,6 +2066,11 @@ export default function FifaLiga() {
   });
   const played = fixtures.filter((f) => f.played),
     pending = fixtures.filter((f) => !f.played);
+  const sortedPending = [...pending].sort((a, b) => {
+    const aMine = a.home === myTeamName || a.away === myTeamName ? 0 : 1;
+    const bMine = b.home === myTeamName || b.away === myTeamName ? 0 : 1;
+    return aMine - bMine;
+  });
   const pct = fixtures.length
     ? Math.round((played.length / fixtures.length) * 100)
     : 0;
@@ -2662,6 +2667,7 @@ export default function FifaLiga() {
               style={{
                 ...pill(true),
                 background: "#1f1a0c",
+                color: "#e0ded6",
                 cursor: "default",
               }}
             >
@@ -3445,7 +3451,7 @@ export default function FifaLiga() {
                 Pendientes ({pending.length})
               </div>
             )}
-            {pending.map((f) => {
+            {sortedPending.map((f) => {
               const idx = fixtures.indexOf(f);
               const homeTeam = teams.find((t) => t.name === f.home);
               const awayTeam = teams.find((t) => t.name === f.away);
