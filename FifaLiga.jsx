@@ -37,6 +37,78 @@ import en from "i18n-iso-countries/langs/en.json";
 
 countries.registerLocale(en);
 
+const clubLogos = {
+  "Real Madrid": "./src/clubs/realmadrid.png",
+  Barcelona: "./src/clubs/barcelona.png",
+  "Atletico de Madrid": "./src/clubs/atlmadrid.png",
+  "Athletic Club": "./src/clubs/athletic.png",
+  Arsenal: "./src/clubs/arsenal.png",
+  Villarreal: "./src/clubs/villarreal.png",
+  "Vancouver Whitecaps": "./src/clubs/vancouver.png",
+  Tottenham: "./src/clubs/tottenham.png",
+  Sunderland: "./src/clubs/sunderland.png",
+  "Sporting CP": "./src/clubs/sporting.png",
+  Sassuolo: "./src/clubs/sassuolo.png",
+  Roma: "./src/clubs/roma.png",
+  "Real Sociedad": "./src/clubs/realsociedad.png",
+  "RB Leipzig": "./src/clubs/rbleipzig.png",
+  "Rayo Vallecano": "./src/clubs/rayovallecano.png",
+  "RC Lens": "./src/clubs/racinglens.png",
+  PSV: "./src/clubs/psv.png",
+  PSG: "./src/clubs/psg.png",
+  Porto: "./src/clubs/porto.png",
+  "Olympique Lyonnais": "./src/clubs/olympiquelyon.png",
+  "Olympique Marseille": "./src/clubs/olympiquemarsella.png",
+  "Nottingham Forest": "./src/clubs/nottingham_forest.png",
+  "Newcastle United": "./src/clubs/newcastle.png",
+  Napoli: "./src/clubs/napoli.png",
+  "AS Monaco": "./src/clubs/monaco.png",
+  "AC Milan": "./src/clubs/milan.png",
+  "Manchester United": "./src/clubs/manchesterunited.png",
+  "Manchester City": "./src/clubs/manchestercity.png",
+  "LA FC": "./src/clubs/losangeles.png",
+  Liverpool: "./src/clubs/liverpool.png",
+  Lazio: "./src/clubs/lazio.png",
+  Juventus: "./src/clubs/juventus.png",
+  "Inter Miami": "./src/clubs/intermiami.png",
+  "Inter Milan": "./src/clubs/inter.png",
+  Galatasaray: "./src/clubs/galatasaray.png",
+  Fiorentina: "./src/clubs/fiorentina.png",
+  Fenerbahçe: "./src/clubs/fenerbahce.png",
+  Everton: "./src/clubs/everton.png",
+  "Eintracht Frankfurt": "./src/clubs/eintrachtfrankfurt.png",
+  "Crystal Palace": "./src/clubs/crystalpalace.png",
+  Como: "./src/clubs/como.png",
+  Chelsea: "./src/clubs/chelsea.png",
+  Celta: "./src/clubs/celta.png",
+  Brighton: "./src/clubs/brighton.png",
+  Brentford: "./src/clubs/brentford.png",
+  "Borussia Dortmund": "./src/clubs/borussiadortmund.png",
+  Bologna: "./src/clubs/bologna.png",
+  "Real Betis": "./src/clubs/betis.png",
+  Besiktas: "./src/clubs/besiktas.png",
+  Benfica: "./src/clubs/benfica.png",
+  "Bayern Munich": "./src/clubs/bayernmunchen.png",
+  "Bayer Leverkusen": "./src/clubs/bayerleverkusen.png",
+  Atalanta: "./src/clubs/atalanta.png",
+  "Aston Villa": "./src/clubs/astonvilla.png",
+  "Al Nassr": "./src/clubs/al_nassr.png",
+  "Al Hilal": "./src/clubs/al_hilal.png",
+  "Al Ahli": "./src/clubs/al_ahli_saudi.png",
+  "Free Agent": "./src/clubs/free_agent.png",
+  Getafe: "./src/clubs/getafe.png",
+  Mallorca: "./src/clubs/mallorca.png",
+  Lecce: "./src/clubs/lecce.png",
+  "Al Qadsiah": "./src/clubs/al_qadsiah.png",
+  "Al Shabab": "./src/clubs/al_shabab.png",
+  "Al Khaleej": "./src/clubs/al_khaleej.png",
+  Legend: "./src/clubs/legend.png",
+  "Sporting Clube de Braga": "./src/clubs/braga.png",
+  Hoffenheim: "./src/clubs/hoffenheim.png",
+  Fulham: "./src/clubs/fulham.png",
+  "Boca Juniors": "./src/clubs/boca.png",
+  "Club Brugge": "./src/clubs/clubbrujas.png",
+};
 // ─── VIEWS ──────────────────────────────────────────────────────────────────
 const VIEWS = {
   LOGIN: "login",
@@ -564,6 +636,7 @@ export default function FifaLiga() {
     page * ITEMS_PER_PAGE,
   );
   const [clauseConfirm, setClauseConfirm] = useState(null);
+  const [clauseAlerts, setClauseAlerts] = useState([]);
   const [discardConfirm, setDiscardConfirm] = useState(null);
   const [clauseInvestInput, setClauseInvestInput] = useState({});
   const [offerModal, setOfferModal] = useState(null); // { teamName, player } being offered on
@@ -675,6 +748,7 @@ export default function FifaLiga() {
     if (s.bids) setBids(s.bids);
     if (s.marketHistory) setMarketHistory(s.marketHistory);
     if (s.offers) setOffers(s.offers);
+    if (s.clauseAlerts !== undefined) setClauseAlerts(s.clauseAlerts);
     if (s.notifications) setNotifications(s.notifications);
     if (s.tournamentBracket !== undefined)
       setTournamentBracket(s.tournamentBracket);
@@ -771,6 +845,7 @@ export default function FifaLiga() {
         bids,
         marketHistory,
         offers,
+        clauseAlerts,
         notifications,
         tournamentBracket,
         championPrize,
@@ -792,6 +867,7 @@ export default function FifaLiga() {
       bids,
       marketHistory,
       offers,
+      clauseAlerts,
       notifications,
       tournamentBracket,
       championPrize,
@@ -836,6 +912,7 @@ export default function FifaLiga() {
       bids: {},
       marketHistory: [],
       offers: [],
+      clauseAlerts: [],
       notifications: [],
       tournamentBracket: null,
       championPrize: null,
@@ -1691,7 +1768,21 @@ export default function FifaLiga() {
       `${myTeamName} pagó la cláusula de ${player.name} (${fmtM(clauseAmount)}) a ${sellerTeamName}.`,
       "clause",
     );
-    save({ teams: updatedTeams, notifications: newNotifications });
+    // ── Nueva alerta para el vendedor ──
+    const newAlert = {
+      id: `ca_${Date.now()}`,
+      teamName: sellerTeamName,
+      playerName: player.name,
+      amount: clauseAmount,
+      buyerTeam: myTeamName,
+    };
+    const newClauseAlerts = [...clauseAlerts, newAlert];
+    setClauseAlerts(newClauseAlerts);
+    save({
+      teams: updatedTeams,
+      notifications: newNotifications,
+      clauseAlerts: newClauseAlerts,
+    });
   };
 
   const executeTransfer = (
@@ -5406,6 +5497,34 @@ export default function FifaLiga() {
                         : pendingIncomingOffersCount}
                     </span>
                   )}
+                {item.v === VIEWS.SQUADS &&
+                  clauseAlerts.filter((a) => a.teamName === myTeamName).length >
+                    0 && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: -4,
+                        right: -8,
+                        background: "#c0392b",
+                        color: "#fff",
+                        borderRadius: "50%",
+                        minWidth: 15,
+                        height: 15,
+                        fontSize: 9,
+                        fontWeight: 700,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0 3px",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {
+                        clauseAlerts.filter((a) => a.teamName === myTeamName)
+                          .length
+                      }
+                    </span>
+                  )}
               </span>
               <span
                 style={{
@@ -6386,6 +6505,113 @@ export default function FifaLiga() {
                   }}
                 >
                   Cerrar
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* ── Clause payed modal ── */}
+      {view === VIEWS.SQUADS &&
+        myTeamName &&
+        (() => {
+          const myAlerts = clauseAlerts.filter(
+            (a) => a.teamName === myTeamName,
+          );
+          if (myAlerts.length === 0) return null;
+          const dismissAlerts = () => {
+            const newClauseAlerts = clauseAlerts.filter(
+              (a) => a.teamName !== myTeamName,
+            );
+            setClauseAlerts(newClauseAlerts);
+            save({ clauseAlerts: newClauseAlerts });
+          };
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.85)",
+                zIndex: 290,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 20,
+              }}
+            >
+              <div
+                style={{
+                  background: "#15110a",
+                  border: "1px solid #c0392b",
+                  borderRadius: 20,
+                  padding: 24,
+                  maxWidth: 340,
+                  width: "100%",
+                  textAlign: "center",
+                }}
+              >
+                <div style={{ fontSize: 36, marginBottom: 10 }}>😱</div>
+                <h3
+                  style={{
+                    color: "#c0392b",
+                    fontWeight: 800,
+                    fontSize: 18,
+                    marginBottom: 16,
+                  }}
+                >
+                  ¡Te han pagado una cláusula!
+                </h3>
+                {myAlerts.map((a, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: "#100d08",
+                      border: "1px solid #2e2615",
+                      borderRadius: 12,
+                      padding: "12px 16px",
+                      marginBottom: 10,
+                      textAlign: "left",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 15,
+                        color: "#f0e6d2",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {a.playerName}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#8a7a5a" }}>
+                      <span style={{ color: "#e8c252", fontWeight: 700 }}>
+                        {a.buyerTeam}
+                      </span>{" "}
+                      ha pagado su cláusula por{" "}
+                      <span style={{ color: "#c0392b", fontWeight: 700 }}>
+                        {fmtM(a.amount)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                <p
+                  style={{
+                    color: "#8a7a5a",
+                    fontSize: 12,
+                    marginBottom: 16,
+                    marginTop: 8,
+                  }}
+                >
+                  El dinero ya ha sido ingresado en tu cuenta.
+                </p>
+                <button
+                  onClick={dismissAlerts}
+                  style={{
+                    ...btn("linear-gradient(135deg,#c9a227,#8a6f1a)"),
+                    fontSize: 14,
+                  }}
+                >
+                  Entendido
                 </button>
               </div>
             </div>
