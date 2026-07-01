@@ -6511,7 +6511,7 @@ export default function FifaLiga() {
           );
         })()}
 
-      {/* ── Clause payed modal ── */}
+      {/* ── Clause paid modal ── */}
       {view === VIEWS.SQUADS &&
         myTeamName &&
         (() => {
