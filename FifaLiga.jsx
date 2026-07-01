@@ -2345,236 +2345,328 @@ export default function FifaLiga() {
     const clauseTotal =
       (p.clauseValue ?? clauseBase(p.overall)) + (p.clauseInvested || 0) * 2;
     const team = teams.find((t) => t.name === teamName);
-    const isStar = team.squad.star.name === p.name;
+    const isStar = team?.squad?.star?.name === p.name;
+    const locked = mode === "other" && isClauseLocked(p);
+    const hoursLeft = locked
+      ? Math.ceil(clauseLockRemainingMs(p) / (60 * 60 * 1000))
+      : 0;
+    const ICON_SIZE = 28;
+
     return (
-      <div style={{ padding: "10px 0", borderBottom: "1px solid #241e10" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            flexWrap: "wrap",
-            marginBottom: mode ? 6 : 0,
-          }}
-        >
-          <span
-            style={{
-              background: posColor(p.pos || p.position),
-              color: "#fff",
-              borderRadius: 5,
-              padding: "3px 7px",
-              fontSize: 11,
-              fontWeight: 700,
-              minWidth: 38,
-              textAlign: "center",
-            }}
-          >
-            {p.pos || p.position}
-          </span>
-          <span
-            style={{ fontWeight: 600, flex: 1, fontSize: 14, minWidth: 100 }}
-          >
-            {p.name}
-          </span>
-          {(p.goals > 0 || p.assists > 0 || p.mvps > 0) && (
-            <span
-              style={{
-                fontSize: 10,
-                color: "#8a7a5a",
-                display: "flex",
-                gap: 6,
-              }}
-            >
-              {p.goals > 0 && <span>⚽{p.goals}</span>}
-              {p.assists > 0 && <span>🅰️{p.assists}</span>}
-              {p.mvps > 0 && <span>🏅{p.mvps}</span>}
-            </span>
-          )}
-          <span
-            style={{
-              fontWeight: 800,
-              color: ratingColor(p.overall),
-              fontSize: 16,
-              minWidth: 26,
-              textAlign: "right",
-            }}
-          >
-            {p.overall}
-          </span>
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 12,
-            color: "#8a7a5a",
-            marginBottom: mode ? 6 : 0,
-            marginLeft: 46,
-          }}
-        >
-          <span>
-            <CountryFlag country={p.nat} />
-          </span>
-          <span>•</span>
-          <span>🏟️ {p.club}</span>
-        </div>
-        {mode === "own" && !isStar && (
+      <div style={{ padding: "12px 0", borderBottom: "1px solid #241e10" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
+          {/* ── COLUMNA IZQUIERDA: POS / NAT / CLUB ── */}
           <div
             style={{
               display: "flex",
-              gap: 6,
-              flexWrap: "wrap",
+              flexDirection: "column",
+              justifyContent: "space-around",
               alignItems: "center",
+              width: ICON_SIZE + 8,
+              flexShrink: 0,
             }}
           >
-            <span
+            {/* POS */}
+            <div
               style={{
-                color: "#c0392b",
-                fontSize: 11,
-                fontWeight: 700,
-                marginRight: "auto",
-              }}
-            >
-              Cláusula: {fmtM(clauseTotal)}
-              {p.listedForSale && (
-                <span style={{ color: "#27ae60" }}> · en venta</span>
-              )}
-            </span>
-            <button
-              onClick={() =>
-                toggleListForSale(teamName, p.id, !p.listedForSale)
-              }
-              style={{
-                background: "transparent",
-                border: "1px solid #c9a227",
-                color: "#e8c252",
+                width: ICON_SIZE + 8,
+                height: ICON_SIZE,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: posColor(p.pos || p.position),
                 borderRadius: 6,
-                padding: "4px 10px",
-                cursor: "pointer",
-                fontSize: 12,
               }}
             >
-              {p.listedForSale ? "Quitar del mercado" : "Poner en venta"}
-            </button>
-            <button
-              onClick={() => setDiscardConfirm({ teamName, player: p })}
-              style={{
-                background: "transparent",
-                border: "1px solid #f0c040",
-                color: "#f0c040",
-                borderRadius: 6,
-                padding: "4px 10px",
-                cursor: "pointer",
-                fontSize: 12,
-              }}
-            >
-              Descartar
-            </button>
-            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-              <input
-                type="number"
-                min="0.5"
-                step="0.5"
-                placeholder="M€"
-                value={clauseInvestInput[p.id] || ""}
-                onChange={(e) =>
-                  setClauseInvestInput((prev) => ({
-                    ...prev,
-                    [p.id]: e.target.value,
-                  }))
-                }
+              <span
                 style={{
-                  ...input,
-                  width: 60,
-                  padding: "4px 6px",
-                  fontSize: 11,
-                }}
-              />
-              <button
-                onClick={() => investInClause(teamName, p.id)}
-                style={{
-                  background: "#c9a227",
                   color: "#fff",
-                  border: "none",
-                  borderRadius: 6,
-                  padding: "4px 8px",
-                  cursor: "pointer",
-                  fontSize: 11,
-                  fontWeight: 700,
+                  fontSize: 9,
+                  fontWeight: 800,
+                  textAlign: "center",
+                  lineHeight: 1,
                 }}
               >
-                ↑Cláusula
-              </button>
+                {p.pos || p.position}
+              </span>
+            </div>
+            {/* NAT */}
+            <div
+              style={{
+                width: ICON_SIZE + 8,
+                height: ICON_SIZE,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <CountryFlag country={p.nat} />
+            </div>
+            {/* CLUB */}
+            <div
+              style={{
+                width: ICON_SIZE + 8,
+                height: ICON_SIZE,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {clubLogos[p.club] ? (
+                <img
+                  src={clubLogos[p.club]}
+                  alt={p.club}
+                  style={{
+                    width: ICON_SIZE,
+                    height: ICON_SIZE,
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <span
+                  style={{
+                    fontSize: 9,
+                    color: "#8a7a5a",
+                    textAlign: "center",
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {p.club}
+                </span>
+              )}
             </div>
           </div>
-        )}
-        {mode === "other" &&
-          !isStar &&
-          (() => {
-            const locked = isClauseLocked(p);
-            const hoursLeft = locked
-              ? Math.ceil(clauseLockRemainingMs(p) / (60 * 60 * 1000))
-              : 0;
-            return (
-              <div
+
+          {/* ── COLUMNA DERECHA: 4 filas ── */}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-around",
+              gap: 4,
+            }}
+          >
+            {/* FILA 1: NAME + RATING */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span
                 style={{
-                  display: "flex",
-                  gap: 6,
-                  flexWrap: "wrap",
-                  alignItems: "center",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  color: "#f0e6d2",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                  marginRight: 8,
                 }}
               >
+                {p.name}
+              </span>
+              <span
+                style={{
+                  fontWeight: 800,
+                  color: ratingColor(p.overall),
+                  fontSize: 17,
+                  flexShrink: 0,
+                }}
+              >
+                {p.overall}
+              </span>
+            </div>
+
+            {/* FILA 2: GOALS / ASSISTS / MVPS */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                fontSize: 11,
+                color: "#8a7a5a",
+                minHeight: 16,
+              }}
+            >
+              {p.goals > 0 && <span>⚽ {p.goals}</span>}
+              {p.assists > 0 && <span>🅰️ {p.assists}</span>}
+              {p.mvps > 0 && <span>🏅 {p.mvps}</span>}
+              {!p.goals && !p.assists && !p.mvps && (
+                <span style={{ color: "#3a3020" }}>Sin estadísticas</span>
+              )}
+            </div>
+
+            {/* FILA 3: ACTION BUTTONS */}
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                flexWrap: "wrap",
+                minHeight: 16,
+              }}
+            >
+              {mode === "own" && !isStar && (
+                <>
+                  <button
+                    onClick={() =>
+                      toggleListForSale(teamName, p.id, !p.listedForSale)
+                    }
+                    style={{
+                      background: "transparent",
+                      border: "1px solid #c9a227",
+                      color: "#e8c252",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      cursor: "pointer",
+                      fontSize: 11,
+                    }}
+                  >
+                    {p.listedForSale ? "Quitar del mercado" : "Poner en venta"}
+                  </button>
+                  <button
+                    onClick={() => setDiscardConfirm({ teamName, player: p })}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid #f0c040",
+                      color: "#f0c040",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      cursor: "pointer",
+                      fontSize: 11,
+                    }}
+                  >
+                    Descartar
+                  </button>
+                </>
+              )}
+              {mode === "other" && !isStar && (
+                <>
+                  <button
+                    onClick={() => openOfferModal(teamName, p)}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid #c9a227",
+                      color: "#e8c252",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      cursor: "pointer",
+                      fontSize: 11,
+                    }}
+                  >
+                    Ofertar
+                  </button>
+                  <button
+                    onClick={() =>
+                      !locked &&
+                      setClauseConfirm({
+                        sellerTeam: teamName,
+                        player: p,
+                        clauseTotal,
+                      })
+                    }
+                    disabled={locked}
+                    style={{
+                      background: "transparent",
+                      border: `1px solid ${locked ? "#3a3020" : "#c0392b"}`,
+                      color: locked ? "#3a3020" : "#c0392b",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      cursor: locked ? "not-allowed" : "pointer",
+                      fontSize: 11,
+                    }}
+                  >
+                    Pagar cláusula
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* FILA 4: CLAUSE */}
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                flexWrap: "wrap",
+                alignItems: "center",
+                minHeight: 16,
+              }}
+            >
+              {mode === "own" && !isStar && (
+                <>
+                  <span
+                    style={{
+                      color: "#c0392b",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      marginRight: "auto",
+                    }}
+                  >
+                    Cláusula: {fmtM(clauseTotal)}
+                    {p.listedForSale && (
+                      <span style={{ color: "#27ae60" }}> · en venta</span>
+                    )}
+                  </span>
+                  <input
+                    type="number"
+                    min="0.5"
+                    step="0.5"
+                    placeholder="M€"
+                    value={clauseInvestInput[p.id] || ""}
+                    onChange={(e) =>
+                      setClauseInvestInput((prev) => ({
+                        ...prev,
+                        [p.id]: e.target.value,
+                      }))
+                    }
+                    style={{
+                      ...input,
+                      width: 55,
+                      padding: "3px 6px",
+                      fontSize: 11,
+                    }}
+                  />
+                  <button
+                    onClick={() => investInClause(teamName, p.id)}
+                    style={{
+                      background: "#c9a227",
+                      color: "#0a0805",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    ↑Cláusula
+                  </button>
+                </>
+              )}
+              {mode === "other" && !isStar && (
                 <span
                   style={{
                     color: locked ? "#8a7a5a" : "#c0392b",
                     fontSize: 11,
                     fontWeight: 700,
-                    marginRight: "auto",
                   }}
                 >
-                  Cláusula:{" "}
-                  {locked ? `🔒 bloqueada (~${hoursLeft}h)` : fmtM(clauseTotal)}
+                  {locked
+                    ? `🔒 Cláusula bloqueada (~${hoursLeft}h)`
+                    : `Cláusula: ${fmtM(clauseTotal)}`}
                 </span>
-                <button
-                  onClick={() => openOfferModal(teamName, p)}
-                  style={{
-                    background: "transparent",
-                    border: "1px solid #c9a227",
-                    color: "#e8c252",
-                    borderRadius: 6,
-                    padding: "4px 10px",
-                    cursor: "pointer",
-                    fontSize: 12,
-                  }}
-                >
-                  Ofertar
-                </button>
-                <button
-                  onClick={() =>
-                    !locked &&
-                    setClauseConfirm({
-                      sellerTeam: teamName,
-                      player: p,
-                      clauseTotal,
-                    })
-                  }
-                  disabled={locked}
-                  style={{
-                    background: "transparent",
-                    border: `1px solid ${locked ? "#3a5a7a" : "#c0392b"}`,
-                    color: locked ? "#3a5a7a" : "#c0392b",
-                    borderRadius: 6,
-                    padding: "4px 10px",
-                    cursor: locked ? "not-allowed" : "pointer",
-                    fontSize: 12,
-                  }}
-                >
-                  Pagar cláusula
-                </button>
-              </div>
-            );
-          })()}
+              )}
+              {isStar && (
+                <span style={{ color: "#8a7a5a", fontSize: 11 }}>
+                  Cláusula: {fmtM(clauseTotal)}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
