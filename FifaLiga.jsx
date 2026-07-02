@@ -401,6 +401,19 @@ const FORMATIONS = {
     { id: "RW", x: 82, y: 34, label: "MD" },
     { id: "ST", x: 50, y: 12, label: "DC" },
   ],
+  "4-1-2-1-2": [
+    { id: "GK", x: 50, y: 92, label: "POR" },
+    { id: "LB", x: 15, y: 72, label: "LI" },
+    { id: "CB1", x: 38, y: 78, label: "DFC" },
+    { id: "CB2", x: 62, y: 78, label: "DFC" },
+    { id: "RB", x: 85, y: 72, label: "LD" },
+    { id: "CDM", x: 50, y: 48, label: "MCD" },
+    { id: "RW", x: 82, y: 40, label: "MD" },
+    { id: "LW", x: 18, y: 40, label: "MI" },
+    { id: "CAM", x: 50, y: 30, label: "MCO" },
+    { id: "ST", x: 38, y: 16, label: "DC" },
+    { id: "ST", x: 62, y: 16, label: "DC" },
+  ],
   "3-4-3": [
     { id: "GK", x: 50, y: 92, label: "POR" },
     { id: "CB1", x: 25, y: 76, label: "DFC" },
@@ -614,6 +627,7 @@ export default function FifaLiga() {
   const [marketCountdownMs, setMarketCountdownMs] = useState(
     msUntilNextMarketRefresh(),
   );
+  const [marketBadge, setMarketBadge] = useState(false);
   const [marketList, setMarketList] = useState([]);
   const [bids, setBids] = useState({});
   const [marketHistory, setMarketHistory] = useState([]);
@@ -1541,6 +1555,7 @@ export default function FifaLiga() {
     setBids({});
     setMarketHistory(newHistory);
     setMarketResetAt(now);
+    setMarketBadge(true);
     save({
       teams: updatedTeams,
       marketDay: today,
@@ -2703,11 +2718,6 @@ export default function FifaLiga() {
                     : `Cláusula: ${fmtM(clauseTotal)}`}
                 </span>
               )}
-              {isStar && (
-                <span style={{ color: "#8a7a5a", fontSize: 11 }}>
-                  Cláusula: {fmtM(clauseTotal)}
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -2816,7 +2826,7 @@ export default function FifaLiga() {
               <div
                 style={{
                   transform: "scale(2.5)",
-                  animation: "pop .6s",
+                  animation: "pop 1s",
                 }}
               >
                 <CountryFlag country={player.nat} />
@@ -2829,7 +2839,7 @@ export default function FifaLiga() {
                   fontSize: 52,
                   fontWeight: 900,
                   color: "#fff",
-                  animation: "pop .5s",
+                  animation: "pop 1s",
                 }}
               >
                 {player.pos}
@@ -2842,9 +2852,9 @@ export default function FifaLiga() {
                   fontSize: 82,
                   fontWeight: 900,
                   color: ratingColor(player.overall),
-                  textShadow: "0 0 20px rgba(255,255,255,.35)",
+                  textShadow: "0 0 20px rgba(255,255,255,1.5)",
                   animation:
-                    rating === player.overall ? "ratingDone .35s" : undefined,
+                    rating === player.overall ? "ratingDone 1.5s" : undefined,
                 }}
               >
                 {rating}
@@ -2867,7 +2877,7 @@ export default function FifaLiga() {
                     fontWeight: 900,
                     color: "#fff",
                     textAlign: "center",
-                    animation: "nameReveal .6s",
+                    animation: "nameReveal 2s",
                   }}
                 >
                   {player.name}
@@ -5863,7 +5873,10 @@ export default function FifaLiga() {
               onClick={() => {
                 if (item.v === VIEWS.SQUADS) setViewingTeam(null);
                 setView(item.v);
-                if (item.v === VIEWS.MARKET) checkAndRefreshMarket();
+                if (item.v === VIEWS.MARKET) {
+                  checkAndRefreshMarket();
+                  setMarketBadge(false);
+                }
               }}
               style={{
                 flex: 1,
@@ -5934,6 +5947,29 @@ export default function FifaLiga() {
                       }
                     </span>
                   )}
+                {item.v === VIEWS.MARKET && marketBadge && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: -4,
+                      right: -8,
+                      background: "#c9a227",
+                      color: "#0a0805",
+                      borderRadius: "50%",
+                      minWidth: 15,
+                      height: 15,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0 3px",
+                      lineHeight: 1,
+                    }}
+                  >
+                    !
+                  </span>
+                )}
               </span>
               <span
                 style={{
