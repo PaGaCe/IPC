@@ -16,6 +16,7 @@ import {
   MARKET_POOL,
   LEGEND_POOL,
 } from "./PlayersPool";
+import LegendRevealModal from "./LegendRevealModal";
 import countries from "i18n-iso-countries";
 import {
   DndContext,
@@ -165,20 +166,23 @@ function finalRankingPrize(positionIdx) {
   );
 }
 
-function playerValue(overall) {
-  if (overall >= 91) return 85;
-  if (overall >= 90) return 75;
-  if (overall >= 89) return 70;
-  if (overall >= 88) return 65;
-  if (overall >= 87) return 55;
-  if (overall >= 86) return 40;
-  if (overall >= 85) return 25;
-  if (overall >= 84) return 15;
-  if (overall >= 83) return 12;
-  return 10;
+function playerValue(overall, pos) {
+  const base = (() => {
+    if (overall >= 91) return 85;
+    if (overall >= 90) return 75;
+    if (overall >= 89) return 70;
+    if (overall >= 88) return 65;
+    if (overall >= 87) return 55;
+    if (overall >= 86) return 40;
+    if (overall >= 85) return 25;
+    if (overall >= 84) return 15;
+    if (overall >= 83) return 12;
+    return 10;
+  })();
+  return pos === "POR" ? Math.round(base * 0.4 * 10) / 10 : base;
 }
-function clauseBase(overall) {
-  return playerValue(overall);
+function clauseBase(overall, pos) {
+  return playerValue(overall, pos);
 }
 const CLAUSE_LOCK_HOURS = 24;
 
@@ -467,7 +471,7 @@ function generateSquad(idx, usedStars, usedNames) {
       goals: 0,
       assists: 0,
       mvps: 0,
-      clauseValue: clauseBase(picked.overall),
+      clauseValue: clauseBase(picked.overall, picked.pos),
     });
     taken.push(picked.name);
   }
@@ -482,7 +486,7 @@ function generateSquad(idx, usedStars, usedNames) {
       goals: 0,
       assists: 0,
       mvps: 0,
-      clauseValue: clauseBase(picked.overall),
+      clauseValue: clauseBase(picked.overall, picked.pos),
     });
     taken.push(picked.name);
   }
@@ -494,7 +498,7 @@ function generateSquad(idx, usedStars, usedNames) {
       goals: 0,
       assists: 0,
       mvps: 0,
-      clauseValue: clauseBase(star.overall),
+      clauseValue: clauseBase(star.overall, star.pos),
     },
     squad,
   };
@@ -506,7 +510,7 @@ function generateMarket(day, excludeNames = []) {
     .map((p, i) => ({
       ...p,
       marketId: `${day}_${i}_${p.name.replace(/\s/g, "_")}`,
-      baseValue: playerValue(p.overall),
+      baseValue: playerValue(p.overall, p.pos),
     }));
 }
 function fmtM(n) {
@@ -628,6 +632,8 @@ export default function FifaLiga() {
   const [playerPickSwapModal, setPlayerPickSwapModal] = useState(null); // {newPlayer} when squad is full
   const [legendBuyConfirm, setLegendBuyConfirm] = useState(null); // legend player pending purchase confirmation
   const [legendSwapModal, setLegendSwapModal] = useState(null); // {newPlayer} when squad is full after legend purchase
+  const [legendReveal, setLegendReveal] = useState(null); // { player, step }
+  const [legendRatingDisplay, setLegendRatingDisplay] = useState(0);
 
   const [offers, setOffers] = useState([]); // [{offerId, fromTeam, toTeam, player, amount, status, createdAt}]
   const [notifications, setNotifications] = useState([]); // [{id, type, text, createdAt, read}]
@@ -875,6 +881,46 @@ export default function FifaLiga() {
       championPrize,
     ],
   );
+
+  // ── Legend reveal animation: auto-advance the step every second until done ──
+  useEffect(() => {
+    if (!legendReveal) return;
+
+    if (legendReveal.step >= 5) return;
+
+    const delays = [700, 900, 900, 1200, 500];
+
+    const timer = setTimeout(() => {
+      setLegendReveal((prev) => ({
+        ...prev,
+        step: prev.step + 1,
+      }));
+    }, delays[legendReveal.step]);
+
+    return () => clearTimeout(timer);
+  }, [legendReveal]);
+
+  useEffect(() => {
+    if (!legendReveal) return;
+
+    if (legendReveal.step !== 3) return;
+
+    const target = legendReveal.player.overall;
+
+    const interval = setInterval(() => {
+      setLegendRatingDisplay((v) => {
+        if (v >= target) {
+          clearInterval(interval);
+
+          return target;
+        }
+
+        return v + 1;
+      });
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [legendReveal]);
 
   // ── Create league (becomes admin) ──
   const createLeague = async () => {
@@ -1276,7 +1322,7 @@ export default function FifaLiga() {
       goals: 0,
       assists: 0,
       mvps: 0,
-      clauseValue: clauseBase(chosenPlayer.overall),
+      clauseValue: clauseBase(chosenPlayer.overall, chosenPlayer.pos),
       joinedAt: Date.now(),
     };
     if (allP.length >= MAX_SQUAD) {
@@ -1328,6 +1374,12 @@ export default function FifaLiga() {
 
   // ── Buy a legend (overall >= 89) from the market for a fixed price ──
   const buyLegend = (legendPlayer) => {
+    setLegendBuyConfirm(null);
+
+    startLegendReveal(legendPlayer);
+  };
+
+  const finishLegendPurchase = (legendPlayer) => {
     if (!myTeamName) {
       showToast("Necesitas tu propio equipo para comprar");
       return;
@@ -1371,6 +1423,15 @@ export default function FifaLiga() {
     showToast(`¡${legendPlayer.name} se une a ${myTeamName}!`, "success");
   };
 
+  const startLegendReveal = (player) => {
+    setLegendRatingDisplay(Math.max(player.overall - 8, 75));
+
+    setLegendReveal({
+      player,
+      step: 0,
+    });
+  };
+
   const resolveLegendSwap = (removeId) => {
     if (!legendSwapModal) return;
     const { newPlayer } = legendSwapModal;
@@ -1401,34 +1462,12 @@ export default function FifaLiga() {
     showToast(`¡${newPlayer.name} se une a ${myTeamName}!`, "success");
   };
 
-  const resetAll = async () => {
-    setTeams([]);
-    setFixtures([]);
-    setStarted(false);
-    setDraftDone(false);
-    setView(VIEWS.HOME);
-    setTeamInput("");
-    setMarketDay(null);
-    setMarketList([]);
-    setBids({});
-    setMarketHistory([]);
-    setOffers([]);
-    setNotifications([]);
-    setLeagueCode(null);
-    setIsAdmin(false);
-    setMyTeamName(null);
-    setLeagueNameInput("");
-    setJoinCodeInput("");
-    setNewTeamNameInput("");
-    try {
-      await storage.delete(deviceKey);
-    } catch (e) {}
-  };
-
   // ── Market resolution ──
   const checkAndRefreshMarket = () => {
-    const today = getDayKey();
-    if (today !== marketDay) resolveAuctions();
+    const now = Date.now();
+    const elapsed = marketResetAt ? now - marketResetAt : Infinity;
+    const MARKET_INTERVAL_MS = 12 * 60 * 60 * 1000;
+    if (elapsed >= MARKET_INTERVAL_MS) resolveAuctions();
   };
   const resolveAuctions = () => {
     if (!isAdmin) return;
@@ -1588,7 +1627,7 @@ export default function FifaLiga() {
   };
   const discardPlayer = (teamName, player) => {
     const clauseTotal =
-      (player.clauseValue ?? clauseBase(player.overall)) +
+      (player.clauseValue ?? clauseBase(player.overall, player.pos)) +
       (player.clauseInvested || 0) * 2;
     const compensation = clauseTotal / 2;
     const updatedTeams = teams.map((t) => {
@@ -1699,7 +1738,7 @@ export default function FifaLiga() {
         goals: 0,
         assists: 0,
         mvps: 0,
-        clauseValue: amount ?? clauseBase(newPlayer.overall),
+        clauseValue: amount ?? clauseBase(newPlayer.overall, newPlayer.pos),
         joinedAt: Date.now(),
       });
       return { ...t, squad: { ...t.squad, squad: newSquad } };
@@ -1817,7 +1856,8 @@ export default function FifaLiga() {
               {
                 ...player,
                 clauseInvested: 0,
-                clauseValue: newClauseValue ?? clauseBase(player.overall),
+                clauseValue:
+                  newClauseValue ?? clauseBase(player.overall, player.pos),
                 joinedAt: Date.now(),
               },
             ],
@@ -1866,7 +1906,9 @@ export default function FifaLiga() {
   // ── Offers (free-price, accept/reject by the receiving team) ──
   const openOfferModal = (teamName, player) => {
     setOfferModal({ teamName, player });
-    setOfferAmountStr(String(player.clauseValue || clauseBase(player.overall)));
+    setOfferAmountStr(
+      String(player.clauseValue || clauseBase(player.overall, player.pos)),
+    );
   };
   const submitOffer = () => {
     const amount = parseFloat(offerAmountStr);
@@ -2345,7 +2387,8 @@ export default function FifaLiga() {
   const PlayerRow = ({ p, teamName, mode }) => {
     // mode: "own" (full management) | "other" (read-only + clause/offer)
     const clauseTotal =
-      (p.clauseValue ?? clauseBase(p.overall)) + (p.clauseInvested || 0) * 2;
+      (p.clauseValue ?? clauseBase(p.overall, p.pos)) +
+      (p.clauseInvested || 0) * 2;
     const team = teams.find((t) => t.name === teamName);
     const isStar = team?.squad?.star?.name === p.name;
     const locked = mode === "other" && isClauseLocked(p);
@@ -2862,11 +2905,17 @@ export default function FifaLiga() {
           )}
           {leagueCode && (
             <button
-              onClick={resetAll}
+              onClick={() =>
+                setView(
+                  userProfile?.leagues?.length > 0
+                    ? VIEWS.MY_LEAGUES
+                    : VIEWS.HOME,
+                )
+              }
               style={{
                 background: "transparent",
-                color: "#c0392b",
-                border: "1px solid #c0392b",
+                color: "#c9a227",
+                border: "1px solid #c9a227",
                 borderRadius: 8,
                 padding: "6px 10px",
                 cursor: "pointer",
@@ -2874,7 +2923,7 @@ export default function FifaLiga() {
                 fontSize: 12,
               }}
             >
-              ↺
+              ← Ligas
             </button>
           )}
         </div>
@@ -6969,7 +7018,10 @@ export default function FifaLiga() {
               Recibirás{" "}
               {fmtM(
                 ((discardConfirm.player.clauseValue ??
-                  clauseBase(discardConfirm.player.overall)) +
+                  clauseBase(
+                    discardConfirm.player.overall,
+                    discardConfirm.player.pos,
+                  )) +
                   (discardConfirm.player.clauseInvested || 0) * 2) /
                   2,
               )}
@@ -7166,6 +7218,18 @@ export default function FifaLiga() {
             </div>
           </div>
         </div>
+      )}
+      {/* ── Legend Reveal Modal ── */}
+      {legendReveal && (
+        <LegendRevealModal
+          reveal={legendReveal}
+          rating={legendRatingDisplay}
+          onContinue={() => {
+            finishLegendPurchase(legendReveal.player);
+
+            setLegendReveal(null);
+          }}
+        />
       )}
     </div>
   );
