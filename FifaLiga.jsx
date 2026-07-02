@@ -2827,7 +2827,7 @@ export default function FifaLiga() {
     arg: "AR",
   };
 
-  const CountryFlag = ({ country }) => {
+  exports.CountryFlag = ({ country }) => {
     const code = getCountryCode(country);
 
     if (!code) return <span>🌍</span>;

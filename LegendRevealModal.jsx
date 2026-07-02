@@ -1,3 +1,5 @@
+import { CountryFlag } from "./FifaLiga.jsx";
+
 export default function LegendRevealModal({ reveal, rating, onContinue }) {
   const { player, step } = reveal;
 
