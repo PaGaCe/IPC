@@ -2827,11 +2827,9 @@ export default function FifaLiga() {
                 style={{
                   transform: "scale(2.5)",
                   animation: "pop 2.5s",
-                  width: 128,
-                  height: 120,
                 }}
               >
-                <CountryFlag country={player.nat} />
+                <CountryFlag country={player.nat} width={180} height={135} />
               </div>
             )}
 
@@ -3105,7 +3103,7 @@ export default function FifaLiga() {
     arg: "AR",
   };
 
-  const CountryFlag = ({ country }) => {
+  const CountryFlag = ({ country, width = 16, height = 12 }) => {
     const code = getCountryCode(country);
 
     if (!code) return <span>🌍</span>;
@@ -3116,7 +3114,15 @@ export default function FifaLiga() {
 
     if (!Component) return <span>🌍</span>;
 
-    return <Component title={country} style={{ width: 16, height: 12 }} />;
+    return (
+      <Component
+        title={country}
+        style={{
+          width,
+          height,
+        }}
+      />
+    );
   };
 
   return (
