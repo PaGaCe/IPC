@@ -2826,7 +2826,9 @@ export default function FifaLiga() {
               <div
                 style={{
                   transform: "scale(2.5)",
-                  animation: "pop 1s",
+                  animation: "pop 2.5s",
+                  width: 128,
+                  height: 120,
                 }}
               >
                 <CountryFlag country={player.nat} />
@@ -2839,7 +2841,7 @@ export default function FifaLiga() {
                   fontSize: 52,
                   fontWeight: 900,
                   color: "#fff",
-                  animation: "pop 1s",
+                  animation: "pop 2.5s",
                 }}
               >
                 {player.pos}
@@ -2852,9 +2854,9 @@ export default function FifaLiga() {
                   fontSize: 82,
                   fontWeight: 900,
                   color: ratingColor(player.overall),
-                  textShadow: "0 0 20px rgba(255,255,255,1.5)",
+                  textShadow: "0 0 20px rgba(255,255,255,3)",
                   animation:
-                    rating === player.overall ? "ratingDone 1.5s" : undefined,
+                    rating === player.overall ? "ratingDone 3s" : undefined,
                 }}
               >
                 {rating}
@@ -2877,7 +2879,7 @@ export default function FifaLiga() {
                     fontWeight: 900,
                     color: "#fff",
                     textAlign: "center",
-                    animation: "nameReveal 2s",
+                    animation: "nameReveal 3s",
                   }}
                 >
                   {player.name}
