@@ -16,7 +16,6 @@ import {
   MARKET_POOL,
   LEGEND_POOL,
 } from "./PlayersPool";
-import LegendRevealModal from "./LegendRevealModal";
 import countries from "i18n-iso-countries";
 import {
   DndContext,
