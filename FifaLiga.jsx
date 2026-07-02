@@ -7127,97 +7127,13 @@ export default function FifaLiga() {
       )}
       {/* ── Legend Buy Confirm Modal ── */}
       {legendBuyConfirm && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.8)",
-            zIndex: 240,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              background: "#15110a",
-              border: "1px solid #c0392b",
-              borderRadius: 16,
-              padding: 24,
-              maxWidth: 340,
-              textAlign: "center",
-            }}
-          >
-            <div style={{ fontSize: 32, marginBottom: 10 }}>🏆</div>
-            <p
-              style={{
-                marginBottom: 6,
-                fontWeight: 700,
-                fontSize: 16,
-                color: "#fff",
-              }}
-            >
-              ¡Leyenda disponible!
-            </p>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                marginBottom: 14,
-              }}
-            >
-              <span
-                style={{
-                  background: posColor(legendBuyConfirm.pos),
-                  color: "#fff",
-                  borderRadius: 4,
-                  padding: "2px 8px",
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}
-              >
-                {legendBuyConfirm.pos}
-              </span>
-              <span style={{ fontWeight: 700, fontSize: 17, color: "#fff" }}>
-                {legendBuyConfirm.name}
-              </span>
-              <span
-                style={{
-                  fontWeight: 800,
-                  fontSize: 18,
-                  color: ratingColor(legendBuyConfirm.overall),
-                }}
-              >
-                {legendBuyConfirm.overall}
-              </span>
-            </div>
-            <p
-              style={{
-                color: "#c0392b",
-                fontWeight: 800,
-                fontSize: 20,
-                marginBottom: 6,
-              }}
-            >
-              {fmtM(LEGEND_MARKET_PRICE)}
-            </p>
-            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 20 }}>
-              El jugador se unirá a <strong>{myTeamName}</strong>. Esta
-              operación no se puede deshacer.
-            </p>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button
-                onClick={() => buyLegend(legendBuyConfirm)}
-                style={btn("#c0392b")}
-              >
-                Confirmar compra
-              </button>
-            </div>
-          </div>
-        </div>
+        <Modal>
+          <h3>¿Comprar leyenda por 100M€?</h3>
+
+          <button onClick={() => buyLegend(legendBuyConfirm)}>Comprar</button>
+
+          <button onClick={() => setLegendBuyConfirm(null)}>Cancelar</button>
+        </Modal>
       )}
       {/* ── Legend Reveal Modal ── */}
       {legendReveal && (
