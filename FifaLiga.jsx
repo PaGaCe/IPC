@@ -140,6 +140,7 @@ function genLeagueCode() {
 // ─── ECONOMY ─────────────────────────────────────────────────────────────────
 const BUDGET = 100;
 const MAX_SQUAD = 23;
+const CLAUSE_LOCK_HOURS = 24;
 const PRIZE_WIN = 5,
   PRIZE_DRAW = 2,
   PRIZE_LOSS = 1;
@@ -149,6 +150,10 @@ const SEASON_PRIZE_TOPSCORER = 5,
   SEASON_PRIZE_TOPASSIST = 5,
   SEASON_PRIZE_MVP = 8,
   SEASON_PRIZE_ZAMORA = 5;
+const MARKET_VALUE_PER_GOAL = 0.5;
+const MARKET_VALUE_PER_ASSIST = 0.25;
+const MARKET_VALUE_PER_MVP = 1;
+const MARKET_VALUE_MAX_MULTIPLIER = 2; // tope = valor base * 2
 const TOURNAMENT_PRIZE_MONEY = 40;
 const PLAYER_PICK_MIN_OVERALL = 87,
   PLAYER_PICK_MAX_OVERALL = 89;
@@ -178,12 +183,25 @@ function playerValue(overall, pos) {
     if (overall >= 83) return 12;
     return 10;
   })();
-  return pos === "POR" ? Math.round(base * 0.4 * 10) / 10 : base;
+  if (pos === "POR") return Math.round(base * 0.4 * 10) / 10;
+  else if (pos === "DFC" || pos === "LD" || pos === "LI")
+    return Math.round(base * 0.7 * 10) / 10;
+  else return base;
 }
 function clauseBase(overall, pos) {
   return playerValue(overall, pos);
 }
-const CLAUSE_LOCK_HOURS = 24;
+function calcMarketValue(player) {
+  const base = playerValue(player.overall, player.pos);
+  const bonus =
+    (player.goals || 0) * MARKET_VALUE_PER_GOAL +
+    (player.assists || 0) * MARKET_VALUE_PER_ASSIST +
+    (player.mvps || 0) * MARKET_VALUE_PER_MVP;
+  return Math.min(
+    Math.round((base + bonus) * 10) / 10,
+    base * MARKET_VALUE_MAX_MULTIPLIER,
+  );
+}
 
 function isNightClauseLock() {
   const now = new Date();
@@ -407,12 +425,12 @@ const FORMATIONS = {
     { id: "CB1", x: 38, y: 78, label: "DFC" },
     { id: "CB2", x: 62, y: 78, label: "DFC" },
     { id: "RB", x: 85, y: 72, label: "LD" },
-    { id: "CDM", x: 50, y: 48, label: "MCD" },
+    { id: "CDM", x: 50, y: 60, label: "MCD" },
     { id: "RW", x: 82, y: 40, label: "MD" },
     { id: "LW", x: 18, y: 40, label: "MI" },
     { id: "CAM", x: 50, y: 30, label: "MCO" },
-    { id: "ST", x: 38, y: 16, label: "DC" },
-    { id: "ST", x: 62, y: 16, label: "DC" },
+    { id: "ST1", x: 38, y: 16, label: "DC" },
+    { id: "ST2", x: 62, y: 16, label: "DC" },
   ],
   "3-4-3": [
     { id: "GK", x: 50, y: 92, label: "POR" },
@@ -650,11 +668,18 @@ export default function FifaLiga() {
 
   const [offers, setOffers] = useState([]); // [{offerId, fromTeam, toTeam, player, amount, status, createdAt}]
   const [notifications, setNotifications] = useState([]); // [{id, type, text, createdAt, read}]
-  const [page, setPage] = useState(1);
-  const totalPages = Math.ceil(notifications.length / ITEMS_PER_PAGE);
+  const [pageNotifications, setPageNotifications] = useState(1);
+  const [pageMarketHistory, setPageMarketHistory] = useState(1);
+  const [pageResolvedOffers, setPageResolvedOffers] = useState(1);
+  const [pageTransferHistory, setPageTransferHistory] = useState(1);
+
+  const totalPagesNotifications = Math.max(
+    1,
+    Math.ceil(notifications.length / ITEMS_PER_PAGE),
+  );
   const visibleNotifications = notifications.slice(
-    (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE,
+    (pageNotifications - 1) * ITEMS_PER_PAGE,
+    pageNotifications * ITEMS_PER_PAGE,
   );
   const [clauseConfirm, setClauseConfirm] = useState(null);
   const [clauseAlerts, setClauseAlerts] = useState([]);
@@ -803,6 +828,29 @@ export default function FifaLiga() {
       setStorageLoaded(true);
     })();
   }, [deviceLoaded, leagueCode]);
+
+  useEffect(() => {
+    if (!started || teams.length === 0) return;
+    const needsUpdate = teams.some((t) =>
+      allPlayersOf(t).some(
+        (p) =>
+          p.marketValue === undefined &&
+          (p.goals > 0 || p.assists > 0 || p.mvps > 0),
+      ),
+    );
+    if (!needsUpdate) return;
+    const updatedTeams = teams.map((t) => ({
+      ...t,
+      squad: t.squad
+        ? {
+            star: t.squad.star ? recalcPlayerValue(t.squad.star) : t.squad.star,
+            squad: (t.squad.squad || []).map(recalcPlayerValue),
+          }
+        : t.squad,
+    }));
+    setTeams(updatedTeams);
+    save({ teams: updatedTeams });
+  }, [started, teams.length]);
 
   // Keep a ref to the current view so the long-lived Firestore subscription
   // below always reads the latest value without needing to resubscribe.
@@ -2204,7 +2252,33 @@ export default function FifaLiga() {
         const has = allPlayersOf(t).some((p) => p.id === mvp);
         return has ? updatePlayerIn(t, mvp, "mvps") : t;
       });
+
+    // Recalcular marketValue y clauseValue tras actualizar stats
+    result = result.map((t) => ({
+      ...t,
+      squad: t.squad
+        ? {
+            star: t.squad.star ? recalcPlayerValue(t.squad.star) : t.squad.star,
+            squad: (t.squad.squad || []).map(recalcPlayerValue),
+          }
+        : t.squad,
+    }));
+
     return result;
+  }
+
+  function recalcPlayerValue(player) {
+    const newMarketValue = calcMarketValue(player);
+    const currentClause =
+      player.clauseValue ?? clauseBase(player.overall, player.pos);
+    // Si el marketValue supera la cláusula actual, la cláusula sube al marketValue
+    const newClauseValue =
+      newMarketValue >= currentClause ? newMarketValue : currentClause;
+    return {
+      ...player,
+      marketValue: newMarketValue,
+      clauseValue: newClauseValue,
+    };
   }
 
   const sorted = [...teams].sort((a, b) => {
@@ -2251,6 +2325,38 @@ export default function FifaLiga() {
     .filter((p) => p.mvps > 0)
     .sort((a, b) => b.mvps - a.mvps)
     .slice(0, 10);
+  const topRevalorizados = teams
+    .flatMap((t) =>
+      allPlayersOf(t).map((p) => ({
+        ...p,
+        teamName: t.name,
+        revalorizacion:
+          Math.round(
+            ((p.marketValue || playerValue(p.overall, p.pos)) -
+              playerValue(p.overall, p.pos)) *
+              10,
+          ) / 10,
+      })),
+    )
+    .filter((p) => p.revalorizacion > 0)
+    .sort((a, b) => b.revalorizacion - a.revalorizacion)
+    .slice(0, 10);
+
+  const topParticipaciones = [...allPlayersWithTeam]
+    .map((p) => ({ ...p, participaciones: (p.goals || 0) + (p.assists || 0) }))
+    .filter((p) => p.participaciones > 0)
+    .sort((a, b) => b.participaciones - a.participaciones)
+    .slice(0, 10);
+
+  const mayoresGoleadas = [...fixtures]
+    .filter((f) => f.played)
+    .map((f) => ({
+      ...f,
+      diff: Math.abs(f.homeGoals - f.awayGoals),
+      total: f.homeGoals + f.awayGoals,
+    }))
+    .sort((a, b) => b.diff - a.diff || b.total - a.total)
+    .slice(0, 5);
 
   // ── Zamora ranking: each team's representative goalkeeper (the star if
   // they're a POR, otherwise the highest-overall POR in the squad), ranked by
@@ -2507,7 +2613,7 @@ export default function FifaLiga() {
               gap: 4,
             }}
           >
-            {/* FILA 1: NAME + RATING */}
+            {/* FILA 1: NAME + RATING + MARKET VALUE */}
             <div
               style={{
                 display: "flex",
@@ -2529,16 +2635,36 @@ export default function FifaLiga() {
               >
                 {p.name}
               </span>
-              <span
+              <div
                 style={{
-                  fontWeight: 800,
-                  color: ratingColor(p.overall),
-                  fontSize: 17,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
                   flexShrink: 0,
                 }}
               >
-                {p.overall}
-              </span>
+                {p.marketValue &&
+                  p.marketValue > clauseBase(p.overall, p.pos) && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "#27ae60",
+                        fontWeight: 700,
+                      }}
+                    >
+                      ↑{fmtM(p.marketValue)}
+                    </span>
+                  )}
+                <span
+                  style={{
+                    fontWeight: 800,
+                    color: ratingColor(p.overall),
+                    fontSize: 17,
+                  }}
+                >
+                  {p.overall}
+                </span>
+              </div>
             </div>
 
             {/* FILA 2: GOALS / ASSISTS / MVPS */}
@@ -4736,7 +4862,10 @@ export default function FifaLiga() {
                 </h3>
                 {[...marketHistory]
                   .reverse()
-                  .slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+                  .slice(
+                    (pageMarketHistory - 1) * ITEMS_PER_PAGE,
+                    pageMarketHistory * ITEMS_PER_PAGE,
+                  )
                   .map((h, i) => (
                     <div
                       key={i}
@@ -4788,25 +4917,15 @@ export default function FifaLiga() {
                     </div>
                   ))}
 
-                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                  <button
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    Anterior
-                  </button>
-
-                  <span>
-                    Página {page} de {totalPages}
-                  </span>
-
-                  <button
-                    disabled={page === totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    Siguiente
-                  </button>
-                </div>
+                <Pagination
+                  page={pageMarketHistory}
+                  totalPages={Math.max(
+                    1,
+                    Math.ceil(marketHistory.length / ITEMS_PER_PAGE),
+                  )}
+                  onPrev={() => setPageMarketHistory((p) => p - 1)}
+                  onNext={() => setPageMarketHistory((p) => p + 1)}
+                />
               </div>
             )}
           </div>
@@ -4827,8 +4946,7 @@ export default function FifaLiga() {
                   (o.fromTeam === myTeamName || o.toTeam === myTeamName) &&
                   o.status !== "pending",
               )
-              .sort((a, b) => b.createdAt - a.createdAt)
-              .slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+              .sort((a, b) => b.createdAt - a.createdAt);
             return (
               <div>
                 <h2
@@ -5059,25 +5177,12 @@ export default function FifaLiga() {
                       </div>
                     ))}
 
-                    <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                      <button
-                        disabled={page === 1}
-                        onClick={() => setPage((p) => p - 1)}
-                      >
-                        Anterior
-                      </button>
-
-                      <span>
-                        Página {page} de {totalPages}
-                      </span>
-
-                      <button
-                        disabled={page === totalPages}
-                        onClick={() => setPage((p) => p + 1)}
-                      >
-                        Siguiente
-                      </button>
-                    </div>
+                    <Pagination
+                      page={pageNotifications}
+                      totalPages={totalPagesNotifications}
+                      onPrev={() => setPageNotifications((p) => p - 1)}
+                      onNext={() => setPageNotifications((p) => p + 1)}
+                    />
                   </>
                 )}
 
@@ -5095,79 +5200,74 @@ export default function FifaLiga() {
                     >
                       Historial de ofertas
                     </div>
-                    {resolvedOffers.map((o) => (
-                      <div
-                        key={o.offerId}
-                        style={{
-                          ...card,
-                          padding: "10px 14px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                        }}
-                      >
-                        <span
+                    {resolvedOffers
+                      .slice(
+                        (pageResolvedOffers - 1) * ITEMS_PER_PAGE,
+                        pageResolvedOffers * ITEMS_PER_PAGE,
+                      )
+                      .map((o) => (
+                        <div
+                          key={o.offerId}
                           style={{
-                            background: ratingColor(o.player.overall),
-                            borderRadius: 6,
-                            minWidth: 30,
-                            height: 30,
+                            ...card,
+                            padding: "10px 14px",
                             display: "flex",
                             alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: 800,
-                            fontSize: 12,
-                            color: "#000",
+                            gap: 10,
                           }}
                         >
-                          {o.player.overall}
-                        </span>
-                        <span
-                          style={{ fontWeight: 600, flex: 1, fontSize: 13 }}
-                        >
-                          {o.player.name}
-                        </span>
-                        <span
-                          style={{
-                            fontSize: 11,
-                            color:
-                              o.status === "accepted" ? "#27ae60" : "#c0392b",
-                            fontWeight: 700,
-                          }}
-                        >
-                          {o.status === "accepted" ? "Aceptada" : "Rechazada"}
-                        </span>
-                        <span
-                          style={{
-                            color: "#f0c040",
-                            fontWeight: 700,
-                            fontSize: 12,
-                          }}
-                        >
-                          {fmtM(o.amount)}
-                        </span>
-                      </div>
-                    ))}
+                          <span
+                            style={{
+                              background: ratingColor(o.player.overall),
+                              borderRadius: 6,
+                              minWidth: 30,
+                              height: 30,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: 800,
+                              fontSize: 12,
+                              color: "#000",
+                            }}
+                          >
+                            {o.player.overall}
+                          </span>
+                          <span
+                            style={{ fontWeight: 600, flex: 1, fontSize: 13 }}
+                          >
+                            {o.player.name}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color:
+                                o.status === "accepted" ? "#27ae60" : "#c0392b",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {o.status === "accepted" ? "Aceptada" : "Rechazada"}
+                          </span>
+                          <span
+                            style={{
+                              color: "#f0c040",
+                              fontWeight: 700,
+                              fontSize: 12,
+                            }}
+                          >
+                            {fmtM(o.amount)}
+                          </span>
+                        </div>
+                      ))}
 
-                    <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                      <button
-                        disabled={page === 1}
-                        onClick={() => setPage((p) => p - 1)}
-                      >
-                        Anterior
-                      </button>
-
-                      <span>
-                        Página {page} de {totalPages}
-                      </span>
-
-                      <button
-                        disabled={page === totalPages}
-                        onClick={() => setPage((p) => p + 1)}
-                      >
-                        Siguiente
-                      </button>
-                    </div>
+                    <Pagination
+                      page={pageResolvedOffers}
+                      totalPages={Math.max(
+                        1,
+                        Math.ceil(resolvedOffers.length / ITEMS_PER_PAGE),
+                      )}
+                      onPrev={() => setPageResolvedOffers((p) => p - 1)}
+                      onNext={() => setPageResolvedOffers((p) => p + 1)}
+                    />
                   </div>
                 )}
 
@@ -5187,7 +5287,11 @@ export default function FifaLiga() {
                     </div>
                     {[...marketHistory]
                       .reverse()
-                      .slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+                      .slice(
+                        (pageTransferHistory - 1) * ITEMS_PER_PAGE,
+                        pageTransferHistory * ITEMS_PER_PAGE,
+                      )
+
                       .map((h, i) => (
                         <div
                           key={i}
@@ -5241,25 +5345,15 @@ export default function FifaLiga() {
                         </div>
                       ))}
 
-                    <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                      <button
-                        disabled={page === 1}
-                        onClick={() => setPage((p) => p - 1)}
-                      >
-                        Anterior
-                      </button>
-
-                      <span>
-                        Página {page} de {totalPages}
-                      </span>
-
-                      <button
-                        disabled={page === totalPages}
-                        onClick={() => setPage((p) => p + 1)}
-                      >
-                        Siguiente
-                      </button>
-                    </div>
+                    <Pagination
+                      page={pageTransferHistory}
+                      totalPages={Math.max(
+                        1,
+                        Math.ceil(marketHistory.length / ITEMS_PER_PAGE),
+                      )}
+                      onPrev={() => setPageTransferHistory((p) => p - 1)}
+                      onNext={() => setPageTransferHistory((p) => p + 1)}
+                    />
                   </div>
                 )}
               </div>
@@ -5359,6 +5453,288 @@ export default function FifaLiga() {
                     </span>
                   </div>
                 ))
+              )}
+            </div>
+            {/* TOP REVALORIZADOS */}
+            <div
+              style={{
+                background: "#15110a",
+                border: "1px solid #2e2615",
+                borderRadius: 14,
+                padding: "14px 16px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  marginBottom: 10,
+                }}
+              >
+                📈 Más revalorizados
+              </div>
+              {topRevalorizados.length === 0 ? (
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>Sin datos aún.</p>
+              ) : (
+                topRevalorizados.map((p, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "7px 0",
+                      borderBottom: "1px solid #241e10",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: i === 0 ? "#27ae60" : "#8a7a5a",
+                        fontWeight: 800,
+                        minWidth: 18,
+                        fontSize: 13,
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 13,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {p.name}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#8a7a5a" }}>
+                        {p.teamName} · base{" "}
+                        {fmtM(playerValue(p.overall, p.pos))}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          color: "#27ae60",
+                          fontSize: 14,
+                        }}
+                      >
+                        {fmtM(p.marketValue || playerValue(p.overall, p.pos))}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#27ae60",
+                          fontWeight: 700,
+                        }}
+                      >
+                        +{fmtM(p.revalorizacion)}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* TOP PARTICIPACIONES DE GOL */}
+            <div
+              style={{
+                background: "#15110a",
+                border: "1px solid #2e2615",
+                borderRadius: 14,
+                padding: "14px 16px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  marginBottom: 10,
+                }}
+              >
+                🎯 Participaciones en gol
+              </div>
+              {topParticipaciones.length === 0 ? (
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>Sin datos aún.</p>
+              ) : (
+                topParticipaciones.map((p, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "7px 0",
+                      borderBottom: "1px solid #241e10",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: i === 0 ? "#c0392b" : "#8a7a5a",
+                        fontWeight: 800,
+                        minWidth: 18,
+                        fontSize: 13,
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 13,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {p.name}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#8a7a5a" }}>
+                        {p.teamName}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, color: "#8a7a5a" }}>
+                        ⚽ {p.goals || 0}
+                      </span>
+                      <span style={{ fontSize: 11, color: "#8a7a5a" }}>
+                        🅰️ {p.assists || 0}
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: 800,
+                          color: "#c0392b",
+                          fontSize: 15,
+                          minWidth: 22,
+                          textAlign: "right",
+                        }}
+                      >
+                        {p.participaciones}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* MAYORES GOLEADAS */}
+            <div
+              style={{
+                background: "#15110a",
+                border: "1px solid #2e2615",
+                borderRadius: 14,
+                padding: "14px 16px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  marginBottom: 10,
+                }}
+              >
+                💥 Mayores goleadas
+              </div>
+              {mayoresGoleadas.length === 0 ? (
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>
+                  Sin partidos jugados aún.
+                </p>
+              ) : (
+                mayoresGoleadas.map((f, i) => {
+                  const homeWon = f.homeGoals > f.awayGoals;
+                  const awayWon = f.awayGoals > f.homeGoals;
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 0",
+                        borderBottom: "1px solid #241e10",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: i === 0 ? "#f0c040" : "#8a7a5a",
+                          fontWeight: 800,
+                          minWidth: 18,
+                          fontSize: 13,
+                        }}
+                      >
+                        {i + 1}
+                      </span>
+                      <span
+                        style={{
+                          flex: 1,
+                          fontWeight: homeWon ? 700 : 400,
+                          fontSize: 12,
+                          color: homeWon ? "#f0e6d2" : "#8a7a5a",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {f.home}
+                      </span>
+                      <div
+                        style={{
+                          background: "#0a0805",
+                          border: "1px solid #2e2615",
+                          borderRadius: 6,
+                          padding: "3px 10px",
+                          fontWeight: 800,
+                          fontSize: 14,
+                          color: "#f0c040",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {f.homeGoals}-{f.awayGoals}
+                      </div>
+                      <span
+                        style={{
+                          flex: 1,
+                          fontWeight: awayWon ? 700 : 400,
+                          fontSize: 12,
+                          color: awayWon ? "#f0e6d2" : "#8a7a5a",
+                          textAlign: "right",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {f.away}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: "#c0392b",
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        Δ{f.diff}
+                      </span>
+                    </div>
+                  );
+                })
               )}
             </div>
             <p
@@ -7888,6 +8264,61 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function Pagination({ page, totalPages, onPrev, onNext }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 10,
+        marginTop: 14,
+      }}
+    >
+      <button
+        disabled={page === 1}
+        onClick={onPrev}
+        style={{
+          background:
+            page === 1 ? "#100d08" : "linear-gradient(135deg,#c9a227,#8a6f1a)",
+          color: page === 1 ? "#3a3020" : "#0a0805",
+          border: `1px solid ${page === 1 ? "#2e2615" : "#c9a227"}`,
+          borderRadius: 8,
+          padding: "6px 14px",
+          cursor: page === 1 ? "not-allowed" : "pointer",
+          fontWeight: 700,
+          fontSize: 12,
+        }}
+      >
+        ← Ant
+      </button>
+      <span style={{ color: "#c9b88a", fontSize: 12, fontWeight: 600 }}>
+        {page} / {totalPages}
+      </span>
+      <button
+        disabled={page === totalPages}
+        onClick={onNext}
+        style={{
+          background:
+            page === totalPages
+              ? "#100d08"
+              : "linear-gradient(135deg,#c9a227,#8a6f1a)",
+          color: page === totalPages ? "#3a3020" : "#0a0805",
+          border: `1px solid ${page === totalPages ? "#2e2615" : "#c9a227"}`,
+          borderRadius: 8,
+          padding: "6px 14px",
+          cursor: page === totalPages ? "not-allowed" : "pointer",
+          fontWeight: 700,
+          fontSize: 12,
+        }}
+      >
+        Sig →
+      </button>
     </div>
   );
 }
