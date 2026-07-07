@@ -2462,6 +2462,8 @@ export default function FifaLiga() {
     setTeams(updatedTeams);
     setFixtures(newFixtures);
     setWrappedAvailable(true);
+    setSeasonWrap(seasonWrap);
+
     save({
       teams: updatedTeams,
       fixtures: newFixtures,
