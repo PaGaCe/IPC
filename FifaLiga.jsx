@@ -4144,17 +4144,34 @@ export default function FifaLiga() {
                       los {MIN_SQUAD_TO_PLAY} jugadores mínimos para jugar.
                     </p>
                   )}
-                  <button
-                    onClick={() => !blocked && openResult(idx)}
-                    disabled={blocked}
-                    style={{
-                      ...btn(blocked ? "#1a2030" : undefined),
-                      color: blocked ? "#4a5a6a" : "#443b03",
-                      cursor: blocked ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {blocked ? "🔒 Bloqueado" : "+ Añadir resultado"}
-                  </button>
+                  {(() => {
+                    const canEdit =
+                      isAdmin || myTeamName === f.home || myTeamName === f.away;
+                    return (
+                      <button
+                        onClick={() => !blocked && canEdit && openResult(idx)}
+                        disabled={blocked || !canEdit}
+                        style={{
+                          ...btn(
+                            blocked
+                              ? "#1a2030"
+                              : !canEdit
+                                ? "#1a2030"
+                                : undefined,
+                          ),
+                          color: blocked || !canEdit ? "#4a5a6a" : "#443b03",
+                          cursor:
+                            blocked || !canEdit ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {blocked
+                          ? "🔒 Bloqueado"
+                          : !canEdit
+                            ? "🔒 Sin acceso"
+                            : "+ Añadir resultado"}
+                      </button>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -4183,7 +4200,24 @@ export default function FifaLiga() {
             {[...played].reverse().map((f) => {
               const idx = fixtures.indexOf(f);
               return (
-                <div key={idx} style={card} onClick={() => openResult(idx)}>
+                <div
+                  key={idx}
+                  style={{
+                    ...card,
+                    cursor:
+                      isAdmin || myTeamName === f.home || myTeamName === f.away
+                        ? "pointer"
+                        : "default",
+                  }}
+                  onClick={() => {
+                    if (
+                      isAdmin ||
+                      myTeamName === f.home ||
+                      myTeamName === f.away
+                    )
+                      openResult(idx);
+                  }}
+                >
                   <div
                     style={{ display: "flex", alignItems: "center", gap: 8 }}
                   >
@@ -4238,40 +4272,101 @@ export default function FifaLiga() {
                         marginTop: 8,
                         paddingTop: 8,
                         borderTop: "1px solid #241e10",
-                        fontSize: 11,
-                        color: "#8a7a5a",
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 8,
                       }}
                     >
-                      {f.scorers?.length > 0 && (
-                        <span>
-                          ⚽{" "}
-                          {f.scorers
-                            .map((s) => {
-                              const t = teams.find((tm) => tm.name === s.team);
-                              return allPlayersOf(t).find(
-                                (pp) => pp.id === s.playerId,
-                              )?.name;
-                            })
-                            .filter(Boolean)
-                            .join(", ")}
-                        </span>
-                      )}
+                      {[f.home, f.away].map((teamName) => {
+                        const teamScorers = (f.scorers || []).filter(
+                          (s) => s.team === teamName,
+                        );
+                        const teamAssists = (f.assists || []).filter(
+                          (a) => a.team === teamName,
+                        );
+                        if (
+                          teamScorers.length === 0 &&
+                          teamAssists.length === 0
+                        )
+                          return null;
+                        const t = teams.find((x) => x.name === teamName);
+                        const getPlayer = (id) =>
+                          allPlayersOf(t).find((p) => p.id === id);
+                        return (
+                          <div key={teamName} style={{ marginBottom: 6 }}>
+                            <div
+                              style={{
+                                fontSize: 10,
+                                color: "#8a7a5a",
+                                fontWeight: 700,
+                                marginBottom: 3,
+                              }}
+                            >
+                              {teamName}
+                            </div>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 4,
+                              }}
+                            >
+                              {teamScorers.map((s, i) => (
+                                <span
+                                  key={i}
+                                  style={{
+                                    background: "rgba(192,57,43,0.15)",
+                                    border: "1px solid #c0392b",
+                                    borderRadius: 6,
+                                    padding: "2px 6px",
+                                    fontSize: 10,
+                                    color: "#f0e6d2",
+                                  }}
+                                >
+                                  ⚽ {getPlayer(s.playerId)?.name || "?"}
+                                </span>
+                              ))}
+                              {teamAssists.map((a, i) => (
+                                <span
+                                  key={i}
+                                  style={{
+                                    background: "rgba(39,174,96,0.1)",
+                                    border: "1px solid #27ae60",
+                                    borderRadius: 6,
+                                    padding: "2px 6px",
+                                    fontSize: 10,
+                                    color: "#f0e6d2",
+                                  }}
+                                >
+                                  🅰️ {getPlayer(a.playerId)?.name || "?"}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                       {f.mvp && (
-                        <span style={{ color: "#f0c040" }}>
-                          🏅{" "}
-                          {(() => {
-                            for (const t of teams) {
-                              const p = allPlayersOf(t).find(
-                                (pp) => pp.id === f.mvp,
-                              );
-                              if (p) return p.name;
-                            }
-                            return "";
-                          })()}
-                        </span>
+                        <div style={{ marginTop: 4 }}>
+                          <span
+                            style={{
+                              background: "rgba(240,192,64,0.15)",
+                              border: "1px solid #f0c040",
+                              borderRadius: 6,
+                              padding: "2px 8px",
+                              fontSize: 10,
+                              color: "#f0c040",
+                              fontWeight: 700,
+                            }}
+                          >
+                            🏅 MVP:{" "}
+                            {(() => {
+                              for (const t of teams) {
+                                const p = allPlayersOf(t).find(
+                                  (pp) => pp.id === f.mvp,
+                                );
+                                if (p) return p.name;
+                              }
+                              return "?";
+                            })()}
+                          </span>
+                        </div>
                       )}
                     </div>
                   )}
@@ -5410,50 +5505,82 @@ export default function FifaLiga() {
               >
                 🧤 Trofeo Zamora
               </div>
-              {zamoraRanking.length === 0 ? (
-                <p style={{ color: "#8a7a5a", fontSize: 13 }}>Sin datos aún.</p>
-              ) : (
-                zamoraRanking.map((z, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "7px 0",
-                      borderBottom: "1px solid #241e10",
-                    }}
-                  >
-                    <span
+              <div
+                style={{
+                  background: "#15110a",
+                  border: "1px solid #2e2615",
+                  borderRadius: 14,
+                  padding: "14px 16px",
+                  marginBottom: 12,
+                }}
+              >
+                <div
+                  style={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    marginBottom: 10,
+                  }}
+                >
+                  🧤 Trofeo Zamora
+                </div>
+                {zamoraRanking.length === 0 ? (
+                  <p style={{ color: "#8a7a5a", fontSize: 13 }}>
+                    Sin datos aún.
+                  </p>
+                ) : (
+                  zamoraRanking.map((z, i) => (
+                    <div
+                      key={i}
                       style={{
-                        color: i === 0 ? "#e8c252" : "#8a7a5a",
-                        fontWeight: 800,
-                        minWidth: 18,
-                        fontSize: 13,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "7px 0",
+                        borderBottom: "1px solid #241e10",
                       }}
                     >
-                      {i + 1}
-                    </span>
-                    <span style={{ fontWeight: 600, flex: 1, fontSize: 13 }}>
-                      {z.keeper.name}
-                    </span>
-                    <span style={{ color: "#8a7a5a", fontSize: 11 }}>
-                      {z.teamName}
-                    </span>
-                    <span
-                      style={{
-                        fontWeight: 800,
-                        color: "#e8c252",
-                        fontSize: 15,
-                        minWidth: 50,
-                        textAlign: "right",
-                      }}
-                    >
-                      {z.ga} encajados
-                    </span>
-                  </div>
-                ))
-              )}
+                      <span
+                        style={{
+                          color: i === 0 ? "#e8c252" : "#8a7a5a",
+                          fontWeight: 800,
+                          minWidth: 18,
+                          fontSize: 13,
+                        }}
+                      >
+                        {i + 1}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontWeight: 600,
+                            fontSize: 13,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {z.keeper.name}
+                        </div>
+                        <div style={{ fontSize: 10, color: "#8a7a5a" }}>
+                          {z.teamName}
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          fontWeight: 800,
+                          color: "#e8c252",
+                          fontSize: 15,
+                          minWidth: 50,
+                          textAlign: "right",
+                        }}
+                      >
+                        {z.ga} enc.
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
             {/* TOP REVALORIZADOS */}
             <div
@@ -6731,113 +6858,225 @@ export default function FifaLiga() {
                 margin: "6px auto 16px",
               }}
             />
-            <h3
-              style={{
-                color: "#fff",
-                textAlign: "center",
-                fontWeight: 700,
-                marginBottom: 16,
-                fontSize: 16,
-              }}
-            >
-              Resultado del partido
-            </h3>
+
+            {/* Marcador */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 12,
-                marginBottom: 20,
+                gap: 8,
+                marginBottom: 24,
               }}
             >
               {[
                 {
-                  label: "LOCAL",
                   name: fixtures[pendingResult]?.home,
                   val: homeGoals,
                   set: setHG,
+                  isHome: true,
                 },
                 {
-                  label: "VISITANTE",
                   name: fixtures[pendingResult]?.away,
                   val: awayGoals,
                   set: setAG,
+                  isHome: false,
                 },
-              ].map(({ label, name, val, set }, i) => (
-                <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                  <div
-                    style={{ color: "#8a7a5a", fontSize: 11, marginBottom: 5 }}
-                  >
-                    {label}
+              ].map(({ name, val, set, isHome }, i) => {
+                const hg = parseInt(homeGoals) || 0;
+                const ag = parseInt(awayGoals) || 0;
+                const isWinning = isHome ? hg > ag : ag > hg;
+                const isDraw =
+                  hg === ag && homeGoals !== "" && awayGoals !== "";
+                return (
+                  <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Crest
+                        emoji={teams.find((t) => t.name === name)?.crestEmoji}
+                        size={20}
+                      />
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 13,
+                          color: isWinning
+                            ? "#c9a227"
+                            : isDraw
+                              ? "#f0e6d2"
+                              : "#8a7a5a",
+                        }}
+                      >
+                        {name}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <button
+                        onClick={() =>
+                          set(String(Math.max(0, (parseInt(val) || 0) - 1)))
+                        }
+                        style={{
+                          background: "#2e2615",
+                          border: "none",
+                          color: "#fff",
+                          borderRadius: 8,
+                          width: 34,
+                          height: 34,
+                          fontSize: 18,
+                          cursor: "pointer",
+                          fontWeight: 700,
+                        }}
+                      >
+                        −
+                      </button>
+                      <div
+                        style={{
+                          width: 56,
+                          height: 56,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: isWinning
+                            ? "rgba(201,162,39,0.15)"
+                            : "#100d08",
+                          border: `2px solid ${isWinning ? "#c9a227" : isDraw ? "#2e2615" : "#2e2615"}`,
+                          borderRadius: 12,
+                          fontWeight: 800,
+                          fontSize: 28,
+                          color: isWinning ? "#c9a227" : "#f0e6d2",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        {val === "" ? "-" : val}
+                      </div>
+                      <button
+                        onClick={() => set(String((parseInt(val) || 0) + 1))}
+                        style={{
+                          background: "#2e2615",
+                          border: "none",
+                          color: "#fff",
+                          borderRadius: 8,
+                          width: 34,
+                          height: 34,
+                          fontSize: 18,
+                          cursor: "pointer",
+                          fontWeight: 700,
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      marginBottom: 10,
-                    }}
-                  >
-                    <Crest
-                      emoji={teams.find((t) => t.name === name)?.crestEmoji}
-                      size={20}
-                    />
-                    <span style={{ fontWeight: 700, fontSize: 13 }}>
-                      {name}
-                    </span>
-                  </div>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    value={val}
-                    onChange={(e) => set(e.target.value)}
-                    style={{
-                      width: 64,
-                      textAlign: "center",
-                      background: "#0a0805",
-                      border: "1px solid #2e2615",
-                      borderRadius: 10,
-                      padding: 12,
-                      color: "#f0c040",
-                      fontWeight: 800,
-                      fontSize: 24,
-                      outline: "none",
-                    }}
-                  />
-                </div>
-              ))}
+                );
+              })}
             </div>
-            <EventPicker
-              label="⚽ Goleadores"
-              teams={[
-                fixtures[pendingResult]?.home,
-                fixtures[pendingResult]?.away,
-              ]}
-              allTeams={teams}
-              events={matchEvents.scorers}
-              onAdd={addScorer}
-              onRemove={removeScorer}
-            />
-            <EventPicker
-              label="🅰️ Asistentes (opcional)"
-              teams={[
-                fixtures[pendingResult]?.home,
-                fixtures[pendingResult]?.away,
-              ]}
-              allTeams={teams}
-              events={matchEvents.assists}
-              onAdd={addAssist}
-              onRemove={removeAssist}
-            />
-            <div style={{ marginBottom: 18 }}>
+
+            {/* Sección Goleadores */}
+            <div
+              style={{
+                background: "rgba(192,57,43,0.08)",
+                border: "1px solid rgba(192,57,43,0.3)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#c0392b",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  marginBottom: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                ⚽ Goleadores
+              </div>
+              <EventPickerStyled
+                teams={[
+                  fixtures[pendingResult]?.home,
+                  fixtures[pendingResult]?.away,
+                ]}
+                allTeams={teams}
+                events={matchEvents.scorers}
+                onAdd={addScorer}
+                onRemove={removeScorer}
+                accentColor="#c0392b"
+              />
+            </div>
+
+            {/* Sección Asistentes */}
+            <div
+              style={{
+                background: "rgba(39,174,96,0.08)",
+                border: "1px solid rgba(39,174,96,0.3)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#27ae60",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  marginBottom: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                🅰️ Asistentes{" "}
+                <span
+                  style={{ color: "#5a5040", fontWeight: 400, fontSize: 11 }}
+                >
+                  (opcional)
+                </span>
+              </div>
+              <EventPickerStyled
+                teams={[
+                  fixtures[pendingResult]?.home,
+                  fixtures[pendingResult]?.away,
+                ]}
+                allTeams={teams}
+                events={matchEvents.assists}
+                onAdd={addAssist}
+                onRemove={removeAssist}
+                accentColor="#27ae60"
+              />
+            </div>
+
+            {/* Sección MVP */}
+            <div
+              style={{
+                background: "rgba(240,192,64,0.08)",
+                border: "1px solid rgba(240,192,64,0.3)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                marginBottom: 16,
+              }}
+            >
               <div
                 style={{
                   color: "#f0c040",
                   fontSize: 12,
                   fontWeight: 700,
-                  marginBottom: 8,
+                  marginBottom: 10,
                 }}
               >
                 🏅 Hombre del partido
@@ -6847,14 +7086,23 @@ export default function FifaLiga() {
                 fixtures[pendingResult]?.away,
               ].map((teamName) => {
                 const t = teams.find((x) => x.name === teamName);
-                const allP = allPlayersOf(t);
+                const allP = [...allPlayersOf(t)].sort(
+                  (a, b) =>
+                    (b.goals || 0) +
+                    (b.assists || 0) +
+                    (b.mvps || 0) -
+                    (a.goals || 0) -
+                    (a.assists || 0) -
+                    (a.mvps || 0),
+                );
                 return (
-                  <div key={teamName} style={{ marginBottom: 8 }}>
+                  <div key={teamName} style={{ marginBottom: 10 }}>
                     <div
                       style={{
                         color: "#8a7a5a",
                         fontSize: 11,
-                        marginBottom: 4,
+                        fontWeight: 600,
+                        marginBottom: 6,
                       }}
                     >
                       {teamName}
@@ -6868,16 +7116,31 @@ export default function FifaLiga() {
                             background:
                               matchEvents.mvp === p.id ? "#f0c040" : "#100d08",
                             color:
-                              matchEvents.mvp === p.id ? "#000" : "#c9b88a",
-                            border: "1px solid #2e2615",
+                              matchEvents.mvp === p.id ? "#0a0805" : "#c9b88a",
+                            border: `1px solid ${matchEvents.mvp === p.id ? "#f0c040" : "#2e2615"}`,
                             borderRadius: 8,
                             padding: "5px 10px",
                             cursor: "pointer",
-                            fontSize: 12,
+                            fontSize: 11,
                             fontWeight: 600,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
                           }}
                         >
-                          {p.name}
+                          <span
+                            style={{
+                              background: posColor(p.pos),
+                              borderRadius: 3,
+                              padding: "1px 4px",
+                              fontSize: 9,
+                              color: "#fff",
+                              fontWeight: 800,
+                            }}
+                          >
+                            {p.pos}
+                          </span>
+                          {p.name.split(" ").slice(-1)[0]}
                         </button>
                       ))}
                     </div>
@@ -6885,6 +7148,171 @@ export default function FifaLiga() {
                 );
               })}
             </div>
+
+            {/* Resumen antes de guardar */}
+            {homeGoals !== "" && awayGoals !== "" && (
+              <div
+                style={{
+                  background: "#100d08",
+                  border: "1px solid #2e2615",
+                  borderRadius: 12,
+                  padding: "12px 14px",
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    color: "#8a7a5a",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  Resumen
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 10,
+                  }}
+                >
+                  <span
+                    style={{
+                      flex: 1,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color:
+                        parseInt(homeGoals) > parseInt(awayGoals)
+                          ? "#c9a227"
+                          : "#8a7a5a",
+                    }}
+                  >
+                    {fixtures[pendingResult]?.home}
+                  </span>
+                  <span
+                    style={{
+                      background: "#2e2615",
+                      borderRadius: 8,
+                      padding: "4px 12px",
+                      fontWeight: 800,
+                      fontSize: 18,
+                      color: "#f0c040",
+                    }}
+                  >
+                    {homeGoals}-{awayGoals}
+                  </span>
+                  <span
+                    style={{
+                      flex: 1,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      textAlign: "right",
+                      color:
+                        parseInt(awayGoals) > parseInt(homeGoals)
+                          ? "#c9a227"
+                          : "#8a7a5a",
+                    }}
+                  >
+                    {fixtures[pendingResult]?.away}
+                  </span>
+                </div>
+                {[
+                  fixtures[pendingResult]?.home,
+                  fixtures[pendingResult]?.away,
+                ].map((teamName) => {
+                  const teamScorers = matchEvents.scorers.filter(
+                    (s) => s.team === teamName,
+                  );
+                  const teamAssists = matchEvents.assists.filter(
+                    (a) => a.team === teamName,
+                  );
+                  if (teamScorers.length === 0 && teamAssists.length === 0)
+                    return null;
+                  const t = teams.find((x) => x.name === teamName);
+                  const getPlayer = (id) =>
+                    allPlayersOf(t).find((p) => p.id === id);
+                  return (
+                    <div key={teamName} style={{ marginBottom: 6 }}>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: "#8a7a5a",
+                          fontWeight: 700,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {teamName}
+                      </div>
+                      <div
+                        style={{ display: "flex", flexWrap: "wrap", gap: 4 }}
+                      >
+                        {teamScorers.map((s, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              background: "rgba(192,57,43,0.15)",
+                              border: "1px solid #c0392b",
+                              borderRadius: 6,
+                              padding: "2px 7px",
+                              fontSize: 11,
+                              color: "#f0e6d2",
+                            }}
+                          >
+                            ⚽ {getPlayer(s.playerId)?.name || "?"}
+                          </span>
+                        ))}
+                        {teamAssists.map((a, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              background: "rgba(39,174,96,0.1)",
+                              border: "1px solid #27ae60",
+                              borderRadius: 6,
+                              padding: "2px 7px",
+                              fontSize: 11,
+                              color: "#f0e6d2",
+                            }}
+                          >
+                            🅰️ {getPlayer(a.playerId)?.name || "?"}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {matchEvents.mvp && (
+                  <div style={{ marginTop: 6 }}>
+                    <span
+                      style={{
+                        background: "rgba(240,192,64,0.15)",
+                        border: "1px solid #f0c040",
+                        borderRadius: 6,
+                        padding: "2px 8px",
+                        fontSize: 11,
+                        color: "#f0c040",
+                        fontWeight: 700,
+                      }}
+                    >
+                      🏅{" "}
+                      {(() => {
+                        for (const t of teams) {
+                          const p = allPlayersOf(t).find(
+                            (pp) => pp.id === matchEvents.mvp,
+                          );
+                          if (p) return p.name;
+                        }
+                        return "?";
+                      })()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 onClick={() => setPR(null)}
@@ -8006,10 +8434,20 @@ function StatBlock({ title, data, field, color }) {
             >
               {i + 1}
             </span>
-            <span style={{ fontWeight: 600, flex: 1, fontSize: 13 }}>
-              {p.name}
-            </span>
-            <span style={{ color: "#8a7a5a", fontSize: 11 }}>{p.teamName}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: 13,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {p.name}
+              </div>
+              <div style={{ fontSize: 10, color: "#8a7a5a" }}>{p.teamName}</div>
+            </div>
             <span
               style={{
                 fontWeight: 800,
@@ -8138,25 +8576,29 @@ function LineupField({ team, onSlotTap }) {
   );
 }
 
-function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
+function EventPickerStyled({
+  teams,
+  allTeams,
+  events,
+  onAdd,
+  onRemove,
+  accentColor,
+}) {
   const [selTeam, setSelTeam] = useState(teams[0]);
   const [selPlayer, setSelPlayer] = useState("");
   const t = allTeams.find((x) => x.name === selTeam);
-  const allP = t
-    ? [t.squad?.star, ...(t.squad?.squad || [])].filter(Boolean)
-    : [];
+  const allP = [
+    ...(t ? [t.squad?.star, ...(t.squad?.squad || [])].filter(Boolean) : []),
+  ].sort(
+    (a, b) =>
+      (b.goals || 0) +
+      (b.assists || 0) +
+      (b.mvps || 0) -
+      ((a.goals || 0) + (a.assists || 0) + (a.mvps || 0)),
+  );
+
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div
-        style={{
-          color: "#e8c252",
-          fontSize: 12,
-          fontWeight: 700,
-          marginBottom: 8,
-        }}
-      >
-        {label}
-      </div>
+    <div>
       <div
         style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}
       >
@@ -8170,9 +8612,9 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
             background: "#100d08",
             border: "1px solid #2e2615",
             borderRadius: 8,
-            padding: "8px 10px",
+            padding: "7px 10px",
             color: "#e8eaf0",
-            fontSize: 13,
+            fontSize: 12,
           }}
         >
           {teams.map((tn) => (
@@ -8188,9 +8630,9 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
             background: "#100d08",
             border: "1px solid #2e2615",
             borderRadius: 8,
-            padding: "8px 10px",
+            padding: "7px 10px",
             color: "#e8eaf0",
-            fontSize: 13,
+            fontSize: 12,
             flex: 1,
             minWidth: 120,
           }}
@@ -8198,7 +8640,10 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
           <option value="">Seleccionar jugador...</option>
           {allP.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name}
+              [{p.pos}] {p.name}
+              {p.goals > 0 || p.assists > 0 || p.mvps > 0
+                ? ` (⚽${p.goals || 0} 🅰️${p.assists || 0})`
+                : ""}
             </option>
           ))}
         </select>
@@ -8209,11 +8654,11 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
           }}
           disabled={!selPlayer}
           style={{
-            background: selPlayer ? "#c9a227" : "#241e10",
+            background: selPlayer ? accentColor : "#241e10",
             color: "#fff",
             border: "none",
             borderRadius: 8,
-            padding: "8px 14px",
+            padding: "7px 14px",
             cursor: selPlayer ? "pointer" : "not-allowed",
             fontSize: 13,
             fontWeight: 700,
@@ -8223,7 +8668,7 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
         </button>
       </div>
       {events.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
           {events.map((ev, i) => {
             const team = allTeams.find((x) => x.name === ev.team);
             const player = team
@@ -8236,17 +8681,31 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
                 key={i}
                 style={{
                   background: "#100d08",
-                  border: "1px solid #2e2615",
-                  borderRadius: 14,
-                  padding: "5px 10px",
+                  border: `1px solid ${accentColor}30`,
+                  borderRadius: 10,
+                  padding: "4px 10px",
                   display: "flex",
                   alignItems: "center",
-                  gap: 6,
-                  fontSize: 12,
+                  gap: 5,
+                  fontSize: 11,
                 }}
               >
-                {player?.name || "?"}{" "}
-                <span style={{ color: "#8a7a5a" }}>({ev.team})</span>
+                <span
+                  style={{
+                    background: posColor(player?.pos),
+                    borderRadius: 3,
+                    padding: "1px 4px",
+                    fontSize: 9,
+                    color: "#fff",
+                    fontWeight: 800,
+                  }}
+                >
+                  {player?.pos || "?"}
+                </span>
+                <span>{player?.name || "?"}</span>
+                <span style={{ color: "#5a5040", fontSize: 10 }}>
+                  ({ev.team})
+                </span>
                 <button
                   onClick={() => onRemove(i)}
                   style={{
@@ -8255,6 +8714,8 @@ function EventPicker({ label, teams, allTeams, events, onAdd, onRemove }) {
                     color: "#c0392b",
                     cursor: "pointer",
                     fontWeight: 700,
+                    fontSize: 12,
+                    padding: 0,
                   }}
                 >
                   ×
