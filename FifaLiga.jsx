@@ -675,6 +675,7 @@ export default function FifaLiga() {
 
   // MyLeague wrap form state
   const [wrappedAvailable, setWrappedAvailable] = useState(false);
+  const [seasonWrap, setSeasonWrap] = useState(false);
   const [wrappedOpen, setWrappedOpen] = useState(false);
   const [wrappedSlide, setWrappedSlide] = useState(0);
 
