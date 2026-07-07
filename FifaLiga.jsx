@@ -184,7 +184,7 @@ function playerValue(overall, pos) {
     return 10;
   })();
   if (pos === "POR") return Math.round(base * 0.4 * 10) / 10;
-  else if (pos === "DFC" || pos === "LD" || pos === "LI")
+  else if (pos === "DFC" || pos === "LD" || pos === "LI" || pos === "MCD")
     return Math.round(base * 0.7 * 10) / 10;
   else return base;
 }
@@ -2385,6 +2385,16 @@ export default function FifaLiga() {
   const zamoraWinner = zamoraRanking[0]?.keeper || null;
 
   const startNewSeason = () => {
+    const seasonWrap = {
+      teams,
+      fixtures,
+      topScorers,
+      topAssists,
+      topMvps,
+      zamoraWinner,
+      topRevalorizados,
+      sorted,
+    };
     let updatedTeams = [...teams];
     const give = (playerId, amount) => {
       updatedTeams = updatedTeams.map((t) => {
@@ -2453,6 +2463,7 @@ export default function FifaLiga() {
       teams: updatedTeams,
       fixtures: newFixtures,
       wrappedAvailable: true,
+      seasonWrap,
     });
     showToast(
       "🆕 ¡Nueva temporada iniciada! Premios repartidos y calendario reiniciado.",
@@ -8309,15 +8320,15 @@ export default function FifaLiga() {
       )}
       {wrappedOpen && (
         <SeasonWrapped
-          teams={teams}
-          fixtures={fixtures}
+          teams={seasonWrap.teams}
+          fixtures={seasonWrap.fixtures}
           myTeamName={myTeamName}
-          sorted={sorted}
-          topScorers={topScorers}
-          topAssists={topAssists}
-          topMvps={topMvps}
-          zamoraRanking={zamoraRanking}
-          topRevalorizados={topRevalorizados}
+          sorted={seasonWrap.sorted}
+          topScorers={seasonWrap.topScorers}
+          topAssists={seasonWrap.topAssists}
+          topMvps={seasonWrap.topMvps}
+          zamoraRanking={seasonWrap.zamoraWinner}
+          topRevalorizados={seasonWrap.topRevalorizados}
           onClose={() => setWrappedOpen(false)}
         />
       )}
