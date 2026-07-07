@@ -926,6 +926,7 @@ export default function FifaLiga() {
         tournamentBracket,
         championPrize,
         wrappedAvailable,
+        seasonWrap,
         ...patch,
       };
       try {
@@ -949,6 +950,7 @@ export default function FifaLiga() {
       tournamentBracket,
       championPrize,
       wrappedAvailable,
+      seasonWrap,
     ],
   );
   // ── Legend reveal animation: auto-advance the step every second until done ──
