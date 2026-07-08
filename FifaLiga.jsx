@@ -381,16 +381,8 @@ export default function FifaLiga() {
     return () => unsubscribe();
   }, [leagueCode]);
 
-  // ── Market countdown: ticks every second while viewing the market ──
-  useEffect(() => {
-    if (view !== VIEWS.MARKET) return;
-    setMarketCountdownMs(msUntilNextMarketRefresh(marketResetAt));
-    const tick = setInterval(
-      () => setMarketCountdownMs(msUntilNextMarketRefresh(marketResetAt)),
-      1000,
-    );
-    return () => clearInterval(tick);
-  }, [view, marketResetAt]);
+  // ── Market badge reset on view ──
+  // (countdown moved below resolveAuctions)
 
   const save = useCallback(
     async (patch) => {
@@ -1027,7 +1019,6 @@ export default function FifaLiga() {
     if (elapsed >= MARKET_INTERVAL_MS) resolveAuctions();
   };
   const resolveAuctions = () => {
-    if (!isAdmin) return;
     const now = Date.now();
     const today = getDayKey();
     let updatedTeams = [...teams];
@@ -1109,6 +1100,32 @@ export default function FifaLiga() {
       marketResetAt: now,
     });
   };
+
+  // ── Market countdown: ticks every second globally ──
+  const resolveAuctionsRef = useRef(null);
+  resolveAuctionsRef.current = resolveAuctions;
+  const resolvedAtRef = useRef(null);
+  useEffect(() => {
+    resolvedAtRef.current = null;
+    setMarketCountdownMs(msUntilNextMarketRefresh(marketResetAt));
+    const tick = setInterval(() => {
+      const remaining = msUntilNextMarketRefresh(marketResetAt);
+      setMarketCountdownMs(remaining);
+      if (remaining <= 0 && resolvedAtRef.current !== marketResetAt) {
+        resolvedAtRef.current = marketResetAt;
+        resolveAuctionsRef.current?.();
+      }
+    }, 1000);
+    return () => clearInterval(tick);
+  }, [marketResetAt]);
+
+  // ── Auto-resolve on load / live update: if marketResetAt is already stale, resolve ──
+  useEffect(() => {
+    if (!marketResetAt) return;
+    if (Date.now() - marketResetAt >= 12 * 60 * 60 * 1000) {
+      resolveAuctionsRef.current?.();
+    }
+  }, [marketResetAt]);
 
   // ── New simplified bid flow ──
   const openBidModal = (player) => {
