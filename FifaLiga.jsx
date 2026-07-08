@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { storage } from "./firebaseStorage";
+import * as Flags from "country-flag-icons/react/3x2";
 import logoImg from "./src/assets/logo.webp";
 import {
   signInWithGoogle,
@@ -9,8 +10,23 @@ import {
   addLeagueToProfile,
   removeLeagueFromProfile,
 } from "./firebaseAuth";
-import { MARKET_POOL, LEGEND_POOL } from "./src/fifaLiga/pools";
-import { arrayMove } from "@dnd-kit/sortable";
+import { MARKET_POOL, LEGEND_POOL } from "./PlayersPool";
+import countries from "i18n-iso-countries";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  TouchSensor,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   clubLogos,
   VIEWS,
@@ -66,9 +82,10 @@ import {
   Pagination,
 } from "./src/fifaLiga/components";
 import SeasonWrapped from "./src/fifaLiga/SeasonWrapped";
-import { PlayerRow } from "./src/fifaLiga/views/PlayerRow";
-import { SquadDndList, LegendRevealModal } from "./src/fifaLiga/components";
-import { bg, gold, goldLight, goldDark, card, input, btn, pill, NAV_ITEMS } from "./src/fifaLiga/styles";
+
+import en from "i18n-iso-countries/langs/en.json";
+
+countries.registerLocale(en);
 
 export default function FifaLiga() {
   const [view, setView] = useState(VIEWS.LOGIN);
@@ -1945,6 +1962,809 @@ export default function FifaLiga() {
 
   const myTeamObj = teams.find((t) => t.name === myTeamName);
 
+  // ─── Mobile-first styles ────────────────────────────────────────────────
+  const bg = "#0a0805"; // negro cálido en vez de azul oscuro
+  const gold = "#c9a227"; // dorado principal
+  const goldLight = "#e8c252"; // dorado claro (hover/highlight)
+  const goldDark = "#8a6f1a"; // dorado oscuro (bordes)
+  const card = {
+    background: "#15110a",
+    border: "1px solid #2e2615",
+    borderRadius: 14,
+    padding: "14px 16px",
+    marginBottom: 10,
+  };
+  const input = {
+    background: "#100d08",
+    border: "1px solid #2e2615",
+    borderRadius: 10,
+    padding: "12px 14px",
+    color: "#f0e6d2",
+    fontSize: 15,
+    outline: "none",
+    width: "100%",
+  };
+  const btn = (col) => ({
+    background: col || "linear-gradient(135deg,#c9a227,#8a6f1a)",
+    color: col ? "#fff" : "#0a0805",
+    border: "none",
+    borderRadius: 12,
+    padding: "13px 20px",
+    cursor: "pointer",
+    fontWeight: 700,
+    fontSize: 15,
+    width: "100%",
+  });
+  const pill = (active) => ({
+    background: active ? "linear-gradient(135deg,#c9a227,#8a6f1a)" : "#100d08",
+    color: active ? "#0a0805" : "#c9a98a",
+    border: "1px solid #2e2615",
+    borderRadius: 20,
+    padding: "7px 14px",
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: 13,
+    whiteSpace: "nowrap",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+  });
+
+  const NAV_ITEMS = [
+    { v: VIEWS.TABLE, icon: "🏆", label: "Liga" },
+    { v: VIEWS.FIXTURES, icon: "📅", label: "Partidos" },
+    { v: VIEWS.MARKET, icon: "🏪", label: "Mercado" },
+    { v: VIEWS.TRANSFERS, icon: "🔄", label: "Traspasos" },
+    { v: VIEWS.SQUADS, icon: "👥", label: "Plantillas" },
+  ];
+
+  const PlayerRow = ({ p, teamName, mode }) => {
+    // mode: "own" (full management) | "other" (read-only + clause/offer)
+    const clauseTotal =
+      (p.clauseValue ?? clauseBase(p.overall, p.pos)) +
+      (p.clauseInvested || 0) * 2;
+    const team = teams.find((t) => t.name === teamName);
+    const isStar = team?.squad?.star?.name === p.name;
+    const locked = mode === "other" && isClauseLocked(p);
+    const hoursLeft = locked
+      ? Math.ceil(clauseLockRemainingMs(p) / (60 * 60 * 1000))
+      : 0;
+    const ICON_SIZE = 28;
+
+    return (
+      <div style={{ padding: "12px 0", borderBottom: "1px solid #241e10" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
+          {/* ── COLUMNA IZQUIERDA: POS / NAT / CLUB ── */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-around",
+              alignItems: "center",
+              width: ICON_SIZE + 8,
+              flexShrink: 0,
+            }}
+          >
+            {/* POS */}
+            <div
+              style={{
+                width: ICON_SIZE + 8,
+                height: ICON_SIZE,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: posColor(p.pos || p.position),
+                borderRadius: 6,
+              }}
+            >
+              <span
+                style={{
+                  color: "#fff",
+                  fontSize: 9,
+                  fontWeight: 800,
+                  textAlign: "center",
+                  lineHeight: 1,
+                }}
+              >
+                {p.pos || p.position}
+              </span>
+            </div>
+            {/* NAT */}
+            <div
+              style={{
+                width: ICON_SIZE + 8,
+                height: ICON_SIZE,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <CountryFlag country={p.nat} />
+            </div>
+            {/* CLUB */}
+            <div
+              style={{
+                width: ICON_SIZE + 8,
+                height: ICON_SIZE,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {clubLogos[p.club] ? (
+                <img
+                  src={clubLogos[p.club]}
+                  alt={p.club}
+                  style={{
+                    width: ICON_SIZE,
+                    height: ICON_SIZE,
+                    objectFit: "contain",
+                  }}
+                />
+              ) : (
+                <span
+                  style={{
+                    fontSize: 9,
+                    color: "#8a7a5a",
+                    textAlign: "center",
+                    lineHeight: 1.1,
+                  }}
+                >
+                  {p.club}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* ── COLUMNA DERECHA: 4 filas ── */}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-around",
+              gap: 4,
+            }}
+          >
+            {/* FILA 1: NAME + RATING + MARKET VALUE */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span
+                style={{
+                  fontWeight: 700,
+                  fontSize: 14,
+                  color: "#f0e6d2",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  flex: 1,
+                  marginRight: 8,
+                }}
+              >
+                {p.name}
+              </span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  flexShrink: 0,
+                }}
+              >
+                {p.marketValue &&
+                  p.marketValue > clauseBase(p.overall, p.pos) && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "#27ae60",
+                        fontWeight: 700,
+                      }}
+                    >
+                      ↑{fmtM(p.marketValue)}
+                    </span>
+                  )}
+                <span
+                  style={{
+                    fontWeight: 800,
+                    color: ratingColor(p.overall),
+                    fontSize: 17,
+                  }}
+                >
+                  {p.overall}
+                </span>
+              </div>
+            </div>
+
+            {/* FILA 2: GOALS / ASSISTS / MVPS */}
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                fontSize: 11,
+                color: "#8a7a5a",
+                minHeight: 16,
+              }}
+            >
+              {p.goals > 0 && <span>⚽ {p.goals}</span>}
+              {p.assists > 0 && <span>🅰️ {p.assists}</span>}
+              {p.mvps > 0 && <span>🏅 {p.mvps}</span>}
+              {!p.goals && !p.assists && !p.mvps && (
+                <span style={{ color: "#3a3020" }}>Sin estadísticas</span>
+              )}
+            </div>
+
+            {/* FILA 3: ACTION BUTTONS */}
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                flexWrap: "wrap",
+                minHeight: 16,
+              }}
+            >
+              {mode === "own" && !isStar && (
+                <>
+                  <button
+                    onClick={() =>
+                      toggleListForSale(teamName, p.id, !p.listedForSale)
+                    }
+                    style={{
+                      background: "transparent",
+                      border: "1px solid #c9a227",
+                      color: "#e8c252",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      cursor: "pointer",
+                      fontSize: 11,
+                    }}
+                  >
+                    {p.listedForSale ? "Quitar del mercado" : "Poner en venta"}
+                  </button>
+                  <button
+                    onClick={() => setDiscardConfirm({ teamName, player: p })}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid #f0c040",
+                      color: "#f0c040",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      cursor: "pointer",
+                      fontSize: 11,
+                    }}
+                  >
+                    Descartar
+                  </button>
+                </>
+              )}
+              {mode === "other" && !isStar && (
+                <>
+                  <button
+                    onClick={() => openOfferModal(teamName, p)}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid #c9a227",
+                      color: "#e8c252",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      cursor: "pointer",
+                      fontSize: 11,
+                    }}
+                  >
+                    Ofertar
+                  </button>
+                  <button
+                    onClick={() =>
+                      !locked &&
+                      setClauseConfirm({
+                        sellerTeam: teamName,
+                        player: p,
+                        clauseTotal,
+                      })
+                    }
+                    disabled={locked}
+                    style={{
+                      background: "transparent",
+                      border: `1px solid ${locked ? "#3a3020" : "#c0392b"}`,
+                      color: locked ? "#3a3020" : "#c0392b",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      cursor: locked ? "not-allowed" : "pointer",
+                      fontSize: 11,
+                    }}
+                  >
+                    Pagar cláusula
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* FILA 4: CLAUSE */}
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                flexWrap: "wrap",
+                alignItems: "center",
+                minHeight: 16,
+              }}
+            >
+              {mode === "own" && !isStar && (
+                <>
+                  <span
+                    style={{
+                      color: "#c0392b",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      marginRight: "auto",
+                    }}
+                  >
+                    Cláusula: {fmtM(clauseTotal)}
+                    {p.listedForSale && (
+                      <span style={{ color: "#27ae60" }}> · en venta</span>
+                    )}
+                  </span>
+                  <input
+                    type="number"
+                    min="0.5"
+                    step="0.5"
+                    placeholder="M€"
+                    value={clauseInvestInput[p.id] || ""}
+                    onChange={(e) =>
+                      setClauseInvestInput((prev) => ({
+                        ...prev,
+                        [p.id]: e.target.value,
+                      }))
+                    }
+                    style={{
+                      ...input,
+                      width: 55,
+                      padding: "3px 6px",
+                      fontSize: 11,
+                    }}
+                  />
+                  <button
+                    onClick={() => investInClause(teamName, p.id)}
+                    style={{
+                      background: "#c9a227",
+                      color: "#0a0805",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "3px 8px",
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    ↑Cláusula
+                  </button>
+                </>
+              )}
+              {mode === "other" && !isStar && (
+                <span
+                  style={{
+                    color: locked ? "#8a7a5a" : "#c0392b",
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >
+                  {locked
+                    ? `🔒 Cláusula bloqueada (~${hoursLeft}h)`
+                    : `Cláusula: ${fmtM(clauseTotal)}`}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  function LegendRevealModal({ reveal, rating, onContinue }) {
+    const { player, step } = reveal;
+
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background:
+            "radial-gradient(circle at center,#3a2b00 0%,#120f08 45%,#000 100%)",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 99999,
+          overflow: "hidden",
+        }}
+      >
+        {/* Fondo brillante */}
+        <div
+          style={{
+            position: "absolute",
+            width: 900,
+            height: 900,
+            borderRadius: "50%",
+            background:
+              "radial-gradient(circle,rgba(255,210,80,.35),transparent 70%)",
+            animation: "pulseGlow 2s infinite",
+          }}
+        />
+
+        {/* Partículas */}
+        {Array.from({ length: 35 }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+              width: 4 + Math.random() * 5,
+              height: 4 + Math.random() * 5,
+              borderRadius: "50%",
+              background: "#f6d46d",
+              opacity: 0.8,
+              animation: `particle ${2 + Math.random() * 3}s linear infinite`,
+            }}
+          />
+        ))}
+
+        {/* Flash */}
+        {step === 4 && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "#fff",
+              animation: "flash .35s forwards",
+            }}
+          />
+        )}
+
+        <div
+          style={{
+            width: 380,
+            minHeight: 560,
+            borderRadius: 20,
+            background: "linear-gradient(180deg,#1d1810,#14110c 60%,#0d0a06)",
+            border: "3px solid #c9a227",
+            boxShadow: "0 0 40px rgba(255,215,80,.7)",
+            padding: 30,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            alignItems: "center",
+            position: "relative",
+          }}
+        >
+          <div />
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 28,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 26,
+                color: "#e8c252",
+                fontWeight: 900,
+                letterSpacing: 4,
+              }}
+            >
+              ⭐ LEYENDA ⭐
+            </div>
+
+            {step >= 1 && (
+              <div
+                style={{
+                  transform: "scale(2.5)",
+                  animation: "pop 2.5s",
+                }}
+              >
+                <CountryFlag country={player.nat} width={180} height={135} />
+              </div>
+            )}
+
+            {step >= 2 && (
+              <div
+                style={{
+                  fontSize: 52,
+                  fontWeight: 900,
+                  color: "#fff",
+                  animation: "pop 2.5s",
+                }}
+              >
+                {player.pos}
+              </div>
+            )}
+
+            {step >= 3 && (
+              <div
+                style={{
+                  fontSize: 82,
+                  fontWeight: 900,
+                  color: ratingColor(player.overall),
+                  textShadow: "0 0 20px rgba(255,255,255,3)",
+                  animation:
+                    rating === player.overall ? "ratingDone 3s" : undefined,
+                }}
+              >
+                {rating}
+              </div>
+            )}
+
+            {step >= 5 && (
+              <>
+                <div
+                  style={{
+                    width: "80%",
+                    height: 2,
+                    background: "#c9a227",
+                  }}
+                />
+
+                <div
+                  style={{
+                    fontSize: 36,
+                    fontWeight: 900,
+                    color: "#fff",
+                    textAlign: "center",
+                    animation: "nameReveal 3s",
+                  }}
+                >
+                  {player.name}
+                </div>
+
+                <button
+                  onClick={onContinue}
+                  style={{
+                    marginTop: 20,
+                    padding: "12px 34px",
+                    background: "#c9a227",
+                    border: "none",
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    fontWeight: 800,
+                    fontSize: 17,
+                  }}
+                >
+                  Continuar
+                </button>
+              </>
+            )}
+          </div>
+
+          <div />
+        </div>
+
+        <style>{`
+
+      @keyframes pulseGlow{
+
+        0%{transform:scale(.9);opacity:.45;}
+
+        50%{transform:scale(1.08);opacity:.9;}
+
+        100%{transform:scale(.9);opacity:.45;}
+
+      }
+
+      @keyframes particle{
+
+        from{
+          transform:translateY(120px);
+          opacity:0;
+        }
+
+        20%{
+          opacity:1;
+        }
+
+        to{
+          transform:translateY(-220px);
+          opacity:0;
+        }
+
+      }
+
+      @keyframes flash{
+
+        from{opacity:1;}
+
+        to{opacity:0;}
+
+      }
+
+      @keyframes pop{
+
+        from{
+          opacity:0;
+          transform:scale(.4);
+        }
+
+        to{
+          opacity:1;
+          transform:scale(1);
+        }
+
+      }
+
+      @keyframes ratingDone{
+
+        0%{
+          transform:scale(1);
+        }
+
+        50%{
+          transform:scale(1.3);
+        }
+
+        100%{
+          transform:scale(1);
+        }
+
+      }
+
+      @keyframes nameReveal{
+
+        from{
+          opacity:0;
+          transform:translateY(35px) scale(.8);
+        }
+
+        to{
+          opacity:1;
+          transform:translateY(0) scale(1);
+        }
+
+      }
+
+      `}</style>
+      </div>
+    );
+  }
+
+  function SortablePlayerRow({ p, teamName, mode, ...rest }) {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: p.id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+      background: isDragging ? "#0f2138" : "transparent",
+    };
+    return (
+      <div ref={setNodeRef} style={style} {...attributes}>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <div
+            {...listeners}
+            style={{
+              padding: "10px 8px 10px 0",
+              cursor: "grab",
+              color: "#3a5a7a",
+              touchAction: "none",
+            }}
+          >
+            ⠿
+          </div>
+          <div style={{ flex: 1 }}>
+            <PlayerRow p={p} teamName={teamName} mode={mode} {...rest} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function SquadDndList({ teamName, squad, onReorder }) {
+    const sensors = useSensors(
+      useSensor(PointerSensor),
+      useSensor(TouchSensor, {
+        activationConstraint: { delay: 150, tolerance: 5 },
+      }),
+    );
+    const handleDragEnd = (event) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = squad.findIndex((p) => p.id === active.id);
+      const newIndex = squad.findIndex((p) => p.id === over.id);
+      onReorder(teamName, oldIndex, newIndex, squad); // ← pasamos squad (bench) también
+    };
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={squad.map((p) => p.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {squad.map((p) => (
+            <SortablePlayerRow
+              key={p.id}
+              p={p}
+              teamName={teamName}
+              mode="own"
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
+    );
+  }
+
+  const getCountryCode = (input) => {
+    if (!input) return null;
+
+    const normalized = input.toString().trim().toLowerCase();
+
+    if (FOOTBALL_COUNTRY_MAP[normalized]) {
+      return FOOTBALL_COUNTRY_MAP[normalized];
+    }
+
+    const iso = countries.getAlpha2Code(input.trim(), "en");
+
+    return iso || null;
+  };
+
+  const FOOTBALL_COUNTRY_MAP = {
+    england: "GB",
+    uk: "GB",
+    "united kingdom": "GB",
+    scotland: "GB",
+    wales: "GB",
+    "northern ireland": "GB",
+    usa: "US",
+    "united states": "US",
+    "ivory coast": "CI",
+    "south korea": "KR",
+    "north korea": "KP",
+    russia: "RU",
+    iran: "IR",
+    eng: "GB",
+    esp: "ES",
+    fra: "FR",
+    ger: "DE",
+    ita: "IT",
+    bra: "BR",
+    arg: "AR",
+  };
+
+  const CountryFlag = ({ country, width = 16, height = 12 }) => {
+    const code = getCountryCode(country);
+
+    if (!code) return <span>🌍</span>;
+
+    const Key = code.toUpperCase();
+
+    const Component = Flags[Key];
+
+    if (!Component) return <span>🌍</span>;
+
+    return (
+      <Component
+        title={country}
+        style={{
+          width,
+          height,
+        }}
+      />
+    );
+  };
+
   return (
     <div
       style={{
@@ -2142,31 +2962,3039 @@ export default function FifaLiga() {
           </div>
         )}
 
-<LoginView view={view} authLoading={authLoading} authError={authError} handleGoogleSignIn={handleGoogleSignIn} />
+        {/* ══ LOGIN ══ */}
+        {view === VIEWS.LOGIN && (
+          <div style={{ textAlign: "center", padding: "60px 20px" }}>
+            {authLoading ? (
+              <>
+                <img
+                  src={logoImg}
+                  alt="IPC"
+                  style={{
+                    width: 120,
+                    height: 120,
+                    objectFit: "contain",
+                    marginBottom: 14,
+                    borderRadius: 16,
+                  }}
+                />{" "}
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>
+                  Cargando sesión...
+                </p>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 40, marginBottom: 14 }}>⚽</div>
+                <h2
+                  style={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 21,
+                    marginBottom: 8,
+                  }}
+                >
+                  IPC
+                </h2>
+                <p style={{ color: "#8a7a5a", fontSize: 14, marginBottom: 24 }}>
+                  Inicia sesión para guardar tus ligas y volver a entrar cuando
+                  quieras.
+                </p>
+                {authError && (
+                  <div
+                    style={{
+                      background: "#5a1a1a",
+                      border: "1px solid #c0392b",
+                      borderRadius: 10,
+                      padding: "10px 14px",
+                      color: "#fff",
+                      fontSize: 13,
+                      marginBottom: 16,
+                    }}
+                  >
+                    ⚠️ {authError}
+                  </div>
+                )}
+                <button
+                  onClick={handleGoogleSignIn}
+                  style={{
+                    ...btn("#fff"),
+                    color: "#1a1a1a",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    maxWidth: 280,
+                    margin: "0 auto",
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 18 18">
+                    <path
+                      fill="#4285F4"
+                      d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.85 2.08-1.81 2.72v2.26h2.92c1.71-1.57 2.69-3.88 2.69-6.62z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.33C2.44 15.98 5.48 18 9 18z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M3.97 10.71c-.18-.54-.28-1.11-.28-1.71s.1-1.17.28-1.71V4.96H.96A8.99 8.99 0 0 0 0 9c0 1.45.35 2.83.96 4.04l3.01-2.33z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"
+                    />
+                  </svg>
+                  Continuar con Google
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
-        {/* ══ MY_LEAGUES<MyLeaguesView view={view} userProfile={userProfile} handleSignOut={handleSignOut} setView={setView} setLeagueCode={setLeagueCode} setMyTeamName={setMyTeamName} saveDevice={saveDevice} setStorageLoaded={setStorageLoaded} />
+        {/* ══ MY_LEAGUES (account's saved leagues selector) ══ */}
+        {view === VIEWS.MY_LEAGUES && (
+          <div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 6,
+              }}
+            >
+              <h2
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 21,
+                  margin: 0,
+                }}
+              >
+                Tus Ligas
+              </h2>
+              <button
+                onClick={handleSignOut}
+                style={{
+                  background: "transparent",
+                  border: "1px solid #2e2615",
+                  color: "#8a7a5a",
+                  borderRadius: 8,
+                  padding: "5px 10px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                Salir
+              </button>
+            </div>
+            <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 18 }}>
+              {userProfile?.displayName}, elige una liga para continuar.
+            </p>
+            {(userProfile?.leagues || []).map((l) => (
+              <div
+                key={l.code}
+                onClick={async () => {
+                  setLeagueCode(l.code);
+                  setMyTeamName(l.teamName);
+                  await saveDevice({
+                    leagueCode: l.code,
+                    myTeamName: l.teamName,
+                  });
+                  setStorageLoaded(false);
+                }}
+                style={{
+                  ...card,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>
+                    {l.teamName}
+                  </div>
+                  <div style={{ color: "#8a7a5a", fontSize: 12 }}>
+                    Código: {l.code}
+                  </div>
+                </div>
+                <span style={{ color: "#8a7a5a", fontSize: 18 }}>›</span>
+              </div>
+            ))}
+            <button
+              onClick={() => setView(VIEWS.HOME)}
+              style={{
+                ...btn("transparent"),
+                border: "1px solid #2e2615",
+                color: "#8a7a5a",
+                marginTop: 10,
+              }}
+            >
+              + Unirme a otra liga / Crear una nueva
+            </button>
+          </div>
+        )}
 
-        {/* ══ HOME<HomeView view={view} deviceLoaded={deviceLoaded} userProfile={userProfile} homeError={homeError} leagueNameInput={leagueNameInput} setLeagueNameInput={setLeagueNameInput} joinCodeInput={joinCodeInput} setJoinCodeInput={setJoinCodeInput} setView={setView} createLeague={createLeague} checkJoinCode={checkJoinCode} handleSignOut={handleSignOut} />
+        {/* ══ HOME (create or join a league) ══ */}
+        {view === VIEWS.HOME && !deviceLoaded && (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "60px 20px",
+              color: "#8a7a5a",
+            }}
+          >
+            <div style={{ fontSize: 24, marginBottom: 10 }}>⚽</div>
+            <p style={{ fontSize: 13 }}>Cargando...</p>
+          </div>
+        )}
+        {view === VIEWS.HOME && deviceLoaded && (
+          <div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 6,
+              }}
+            >
+              <h2
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 21,
+                  margin: 0,
+                }}
+              >
+                IPC
+              </h2>
+              {userProfile?.leagues?.length > 0 && (
+                <button
+                  onClick={() => setView(VIEWS.MY_LEAGUES)}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid #2e2615",
+                    color: "#e8c252",
+                    borderRadius: 8,
+                    padding: "5px 10px",
+                    cursor: "pointer",
+                    fontSize: 12,
+                  }}
+                >
+                  ← Tus ligas
+                </button>
+              )}
+            </div>
+            <p style={{ color: "#8a7a5a", fontSize: 14, marginBottom: 24 }}>
+              Crea una liga nueva o únete a una con el código que te hayan
+              compartido.
+            </p>
+            {homeError && (
+              <div
+                style={{
+                  background: "#5a1a1a",
+                  border: "1px solid #c0392b",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  color: "#fff",
+                  fontSize: 13,
+                  marginBottom: 16,
+                }}
+              >
+                ⚠️ {homeError}
+              </div>
+            )}
+            <div style={{ ...card, marginBottom: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>
+                🆕 Crear Liga
+              </div>
+              <input
+                value={leagueNameInput}
+                onChange={(e) => setLeagueNameInput(e.target.value)}
+                placeholder="Nombre de la liga..."
+                style={{ ...input, marginBottom: 10 }}
+              />
+              <button
+                onClick={createLeague}
+                style={btn("linear-gradient(135deg,#c9a227,#e8c252)")}
+              >
+                Crear y ser admin
+              </button>
+            </div>
+            <div style={card}>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>
+                🔑 Unirme a una Liga
+              </div>
+              <input
+                value={joinCodeInput}
+                onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+                placeholder="Código de liga (ej. AB3X9P)"
+                style={{
+                  ...input,
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                }}
+                maxLength={6}
+              />
+              <button onClick={checkJoinCode} style={btn()}>
+                Buscar liga
+              </button>
+            </div>
+            <button
+              onClick={handleSignOut}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#8a7a5a",
+                cursor: "pointer",
+                fontSize: 12,
+                marginTop: 16,
+                textDecoration: "underline",
+              }}
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        )}
 
-        {/* ══ SETUP<SetupView view={view} leagueCode={leagueCode} isAdmin={isAdmin} homeError={homeError} teams={teams} newTeamNameInput={newTeamNameInput} setNewTeamNameInput={setNewTeamNameInput} setView={setView} createMyTeam={createMyTeam} />
+        {/* ══ SETUP (create my own team inside the league) ══ */}
+        {view === VIEWS.SETUP && (
+          <div>
+            <h2
+              style={{
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 21,
+                marginBottom: 6,
+              }}
+            >
+              Crea tu equipo
+            </h2>
+            <p style={{ color: "#8a7a5a", fontSize: 14, marginBottom: 6 }}>
+              Código de liga:{" "}
+              <strong style={{ color: "#f0c040", letterSpacing: 1 }}>
+                {leagueCode}
+              </strong>{" "}
+              {isAdmin && (
+                <span style={{ color: "#27ae60" }}>(eres admin)</span>
+              )}
+            </p>
+            <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 18 }}>
+              Al crear tu equipo se te asignará automáticamente una estrella
+              (86) y una plantilla de 17 jugadores más. Empiezas con{" "}
+              <strong style={{ color: "#27ae60" }}>100M€</strong>.
+            </p>
+            {homeError && (
+              <div
+                style={{
+                  background: "#5a1a1a",
+                  border: "1px solid #c0392b",
+                  borderRadius: 10,
+                  padding: "10px 14px",
+                  color: "#fff",
+                  fontSize: 13,
+                  marginBottom: 16,
+                }}
+              >
+                ⚠️ {homeError}
+              </div>
+            )}
+            {teams.length > 0 && (
+              <div style={{ marginBottom: 18 }}>
+                <div
+                  style={{
+                    color: "#c9b88a",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  Equipos ya unidos ({teams.length})
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {teams.map((t) => (
+                    <div
+                      key={t.name}
+                      style={{
+                        background: "#100d08",
+                        border: "1px solid #2e2615",
+                        borderRadius: 20,
+                        padding: "5px 12px",
+                        fontSize: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Crest emoji={t.crestEmoji} size={16} />
+                      {t.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              <input
+                value={newTeamNameInput}
+                onChange={(e) => setNewTeamNameInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && createMyTeam()}
+                placeholder="Nombre de tu equipo..."
+                style={input}
+              />
+              <button
+                onClick={createMyTeam}
+                style={{
+                  ...btn("linear-gradient(135deg,#c9a227,#e8c252)"),
+                  width: "auto",
+                  padding: "12px 18px",
+                }}
+              >
+                🎲 Crear
+              </button>
+            </div>
+            <button
+              onClick={() => setView(VIEWS.HOME)}
+              style={{
+                ...btn("transparent"),
+                border: "1px solid #2e2615",
+                color: "#8a7a5a",
+              }}
+            >
+              ← Volver
+            </button>
+          </div>
+        )}
 
-        {/* ══ WAITING<WaitingView view={view} leagueCode={leagueCode} isAdmin={isAdmin} teams={teams} myTeamName={myTeamName} startTournament={startTournament} />
+        {/* ══ WAITING ROOM ══ */}
+        {view === VIEWS.WAITING && (
+          <div>
+            <h2
+              style={{
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 21,
+                marginBottom: 6,
+              }}
+            >
+              Sala de espera
+            </h2>
+            <p style={{ color: "#8a7a5a", fontSize: 14, marginBottom: 6 }}>
+              Código de liga:{" "}
+              <strong style={{ color: "#f0c040", letterSpacing: 1 }}>
+                {leagueCode}
+              </strong>
+            </p>
+            <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 18 }}>
+              Comparte este código con el resto de jugadores.{" "}
+              {isAdmin
+                ? "Inicia la liga cuando todos los equipos estén listos."
+                : "Esperando a que el admin inicie la liga..."}
+            </p>
 
-        {/* ══ TABLE ══ */}<TableView view={view} sorted={sorted} myTeamName={myTeamName} setView={setView} setViewingTeam={setViewingTeam} />
+            <div
+              style={{
+                color: "#c9b88a",
+                fontSize: 12,
+                fontWeight: 700,
+                marginBottom: 8,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              Equipos ({teams.length})
+            </div>
+            {teams.map((t, i) => (
+              <div
+                key={t.name}
+                style={{
+                  ...card,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                }}
+              >
+                <Crest emoji={t.crestEmoji} size={32} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14 }}>
+                    {t.name}
+                    {t.name === myTeamName && (
+                      <span style={{ color: "#27ae60", fontSize: 11 }}>
+                        {" "}
+                        (tú)
+                      </span>
+                    )}
+                  </div>
+                  {t.squad?.star && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginTop: 3,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: posColor(t.squad.star.pos),
+                          color: "#fff",
+                          borderRadius: 4,
+                          padding: "2px 6px",
+                          fontSize: 10,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {t.squad.star.pos}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#c9b88a" }}>
+                        ⭐ {t.squad.star.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {t.squad?.star && (
+                  <span
+                    style={{ fontWeight: 800, color: "#f0c040", fontSize: 18 }}
+                  >
+                    {t.squad.star.overall}
+                  </span>
+                )}
+              </div>
+            ))}
 
-        {/* ══ FIXTURES ══ */}<FixturesView view={view} fixtureWeek={fixtureWeek} setFixtureWeek={setFixtureWeek} myTeamName={myTeamName} teams={teams} loadFixtures={loadFixtures} canSimulate={canSimulate} adminOverride={adminOverride} isAdmin={isAdmin} skipFixtureWeek={skipFixtureWeek} simulateWeek={simulateWeek} submittingWeek={submittingWeek} adjudicatedWeeks={adjudicatedWeeks} currentWeek={currentWeek} afterSaveAndRefresh={afterSaveAndRefresh} handleBidTransferResult={handleBidTransferResult} setToast={setToast} />
+            {isAdmin ? (
+              <div style={{ marginTop: 16 }}>
+                <button
+                  onClick={startTournament}
+                  disabled={teams.length < 2}
+                  style={{
+                    ...btn(
+                      teams.length >= 2
+                        ? "linear-gradient(135deg,#c9a227,#e8c252)"
+                        : "#241e10",
+                    ),
+                    color: teams.length >= 2 ? "#fff" : "#3a5a7a",
+                    cursor: teams.length >= 2 ? "pointer" : "not-allowed",
+                  }}
+                >
+                  🏆 Iniciar Liga ({teams.length} equipos)
+                </button>
+                {teams.length < 2 && (
+                  <p
+                    style={{
+                      color: "#8a7a5a",
+                      fontSize: 11,
+                      marginTop: 8,
+                      textAlign: "center",
+                    }}
+                  >
+                    Esperando al menos 2 equipos para empezar
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div
+                style={{
+                  marginTop: 16,
+                  textAlign: "center",
+                  color: "#8a7a5a",
+                  fontSize: 12,
+                }}
+              >
+                <div style={{ fontSize: 20, marginBottom: 6 }}>⏳</div>
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* ══ SQUADS ══ */}<SquadsView view={view} viewingTeam={viewingTeam} myTeamName={myTeamName} teams={teams} setViewingTeam={setViewingTeam} />
+        {/* ══ TABLE ══ */}
+        {view === VIEWS.TABLE && (
+          <div>
+            <h2
+              style={{
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 21,
+                marginBottom: 6,
+              }}
+            >
+              Clasificación
+            </h2>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 14 }}>
+              Toca un equipo para ver su plantilla.
+            </p>
+            {sorted.map((t, i) => (
+              <div
+                key={t.name}
+                onClick={() => {
+                  if (t.name === myTeamName) setView(VIEWS.SQUADS);
+                  else {
+                    setViewingTeam(t.name);
+                    setView(VIEWS.SQUADS);
+                  }
+                }}
+                style={{
+                  ...card,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background:
+                    i === 0 ? "rgba(39,174,96,0.08)" : card.background,
+                  borderColor: t.name === myTeamName ? "#c9a227" : "#2e2615",
+                  cursor: "pointer",
+                }}
+              >
+                <span
+                  style={{
+                    color: i === 0 ? "#27ae60" : "#8a7a5a",
+                    fontWeight: 800,
+                    fontSize: 15,
+                    minWidth: 20,
+                  }}
+                >
+                  {i + 1}
+                </span>
+                <Crest emoji={t.crestEmoji} size={28} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      fontSize: 14,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {i === 0 && "🥇 "}
+                    {t.name}
+                    {t.name === myTeamName && (
+                      <span style={{ color: "#27ae60", fontSize: 11 }}>
+                        {" "}
+                        (tú)
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#8a7a5a" }}>
+                    {t.played}PJ · {t.won}G {t.drawn}E {t.lost}P · {t.gf}-{t.ga}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div
+                    style={{ fontWeight: 800, color: "#f0c040", fontSize: 17 }}
+                  >
+                    {t.points}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div
+              style={{
+                marginTop: 14,
+                fontSize: 11,
+                color: "#3a5a7a",
+                lineHeight: 1.6,
+              }}
+            >
+              💰 Victoria +{fmtM(PRIZE_WIN)} · Empate +{fmtM(PRIZE_DRAW)} ·
+              Derrota +{fmtM(PRIZE_LOSS)} · Gol +{fmtM(PRIZE_GOAL_FOR)} · Gol
+              recibido {fmtM(PRIZE_GOAL_AGAINST)}
+            </div>
+          </div>
+        )}
 
-        {/* ══ MARKET ══ */}<MarketView view={view} myTeamName={myTeamName} teams={teams} marketType={marketType} setMarketType={setMarketType} marketPlayers={marketPlayers} buyNowMarket={buyNowMarket} toggleListForSale={toggleListForSale} setDiscardConfirm={setDiscardConfirm} openOfferModal={openOfferModal} setClauseConfirm={setClauseConfirm} clauseInvestInput={clauseInvestInput} setClauseInvestInput={setClauseInvestInput} investInClause={investInClause} />
+        {/* ══ FIXTURES ══ */}
+        {view === VIEWS.FIXTURES && (
+          <div>
+            <h2
+              style={{
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 21,
+                marginBottom: 14,
+              }}
+            >
+              Partidos
+            </h2>
 
-        {/* ══ STATS ══ */}<StatsView view={view} teams={teams} myTeamName={myTeamName} statsCache={statsCache} computeStats={computeStats} />
+            {/* Tabs */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <button
+                onClick={() => setFixturesTab("pending")}
+                style={{ flex: 1, ...pill(fixturesTab === "pending") }}
+              >
+                📅 Partidos pendientes ({pending.length})
+              </button>
+              <button
+                onClick={() => setFixturesTab("played")}
+                style={{ flex: 1, ...pill(fixturesTab === "played") }}
+              >
+                ✅ Resultados ({played.length})
+              </button>
+            </div>
 
-<TournamentView view={view} />
+            {/* Filtro por equipo */}
+            <div style={{ marginBottom: 14 }}>
+              <select
+                value={fixturesTeamFilter}
+                onChange={(e) => setFixturesTeamFilter(e.target.value)}
+                style={{
+                  ...input,
+                  fontSize: 13,
+                  padding: "10px 12px",
+                  background: "#100d08",
+                  border: "1px solid #2e2615",
+                  color: fixturesTeamFilter === "all" ? "#8a7a5a" : "#f0e6d2",
+                }}
+              >
+                <option value="all">👥 Todos los equipos</option>
+                {teams.map((t) => (
+                  <option key={t.name} value={t.name}>
+                    {t.name}
+                    {t.name === myTeamName ? " (tú)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-    </div>
+            {/* TAB PENDIENTES */}
+            {fixturesTab === "pending" &&
+              (() => {
+                const filtered = sortedPending.filter(
+                  (f) =>
+                    fixturesTeamFilter === "all" ||
+                    f.home === fixturesTeamFilter ||
+                    f.away === fixturesTeamFilter,
+                );
+                return (
+                  <div>
+                    {filtered.length === 0 && (
+                      <p
+                        style={{
+                          color: "#8a7a5a",
+                          fontSize: 13,
+                          textAlign: "center",
+                          marginTop: 20,
+                        }}
+                      >
+                        {fixturesTeamFilter === "all"
+                          ? "✅ ¡Todos los partidos jugados!"
+                          : `No hay partidos pendientes de ${fixturesTeamFilter}.`}
+                      </p>
+                    )}
+                    {filtered.map((f) => {
+                      const idx = fixtures.indexOf(f);
+                      const homeTeam = teams.find((t) => t.name === f.home);
+                      const awayTeam = teams.find((t) => t.name === f.away);
+                      const homeIncomplete = hasIncompleteSquad(homeTeam);
+                      const awayIncomplete = hasIncompleteSquad(awayTeam);
+                      const blocked = homeIncomplete || awayIncomplete;
+                      const canEdit =
+                        isAdmin ||
+                        myTeamName === f.home ||
+                        myTeamName === f.away;
+                      return (
+                        <div key={idx} style={card}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              marginBottom: 10,
+                            }}
+                          >
+                            <Crest emoji={homeTeam?.crestEmoji} size={24} />
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 14,
+                                flex: 1,
+                                color:
+                                  myTeamName === f.home ? "#e8c252" : "#f0e6d2",
+                              }}
+                            >
+                              {f.home}
+                            </span>
+                            <span
+                              style={{
+                                color: "#8a7a5a",
+                                fontSize: 11,
+                                fontWeight: 600,
+                              }}
+                            >
+                              vs
+                            </span>
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 14,
+                                flex: 1,
+                                textAlign: "right",
+                                color:
+                                  myTeamName === f.away ? "#e8c252" : "#f0e6d2",
+                              }}
+                            >
+                              {f.away}
+                            </span>
+                            <Crest emoji={awayTeam?.crestEmoji} size={24} />
+                          </div>
+                          {blocked && (
+                            <p
+                              style={{
+                                color: "#f0c040",
+                                fontSize: 11,
+                                marginBottom: 8,
+                              }}
+                            >
+                              ⚠️ {homeIncomplete && f.home}
+                              {homeIncomplete && awayIncomplete && " y "}
+                              {awayIncomplete && f.away} no{" "}
+                              {homeIncomplete && awayIncomplete
+                                ? "tienen"
+                                : "tiene"}{" "}
+                              los {MIN_SQUAD_TO_PLAY} jugadores mínimos.
+                            </p>
+                          )}
+                          <button
+                            onClick={() =>
+                              !blocked && canEdit && openResult(idx)
+                            }
+                            disabled={blocked || !canEdit}
+                            style={{
+                              ...btn(
+                                blocked
+                                  ? "#1a2030"
+                                  : !canEdit
+                                    ? "#1a2030"
+                                    : undefined,
+                              ),
+                              color:
+                                blocked || !canEdit ? "#4a5a6a" : "#443b03",
+                              cursor:
+                                blocked || !canEdit ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            {blocked
+                              ? "🔒 Bloqueado"
+                              : !canEdit
+                                ? "🔒 Sin acceso"
+                                : "+ Añadir resultado"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
-          {/* ── Bottom navigation ── */}
+            {/* TAB JUGADOS */}
+            {fixturesTab === "played" &&
+              (() => {
+                const filtered = [...played]
+                  .reverse()
+                  .filter(
+                    (f) =>
+                      fixturesTeamFilter === "all" ||
+                      f.home === fixturesTeamFilter ||
+                      f.away === fixturesTeamFilter,
+                  );
+                return (
+                  <div>
+                    {filtered.length === 0 && (
+                      <p
+                        style={{
+                          color: "#8a7a5a",
+                          fontSize: 13,
+                          textAlign: "center",
+                          marginTop: 20,
+                        }}
+                      >
+                        {fixturesTeamFilter === "all"
+                          ? "Sin partidos jugados aún."
+                          : `No hay partidos jugados de ${fixturesTeamFilter}.`}
+                      </p>
+                    )}
+                    {filtered.map((f) => {
+                      const idx = fixtures.indexOf(f);
+                      const canEdit =
+                        isAdmin ||
+                        myTeamName === f.home ||
+                        myTeamName === f.away;
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            ...card,
+                            cursor: canEdit ? "pointer" : "default",
+                          }}
+                          onClick={() => {
+                            if (canEdit) openResult(idx);
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <Crest
+                              emoji={
+                                teams.find((t) => t.name === f.home)?.crestEmoji
+                              }
+                              size={22}
+                            />
+                            <span
+                              style={{
+                                fontWeight: 600,
+                                fontSize: 13,
+                                flex: 1,
+                                color:
+                                  f.homeGoals > f.awayGoals
+                                    ? "#27ae60"
+                                    : f.homeGoals < f.awayGoals
+                                      ? "#8a7a5a"
+                                      : "#f0e6d2",
+                              }}
+                            >
+                              {f.home}
+                            </span>
+                            <div
+                              style={{
+                                background: "#0a0805",
+                                border: "1px solid #2e2615",
+                                borderRadius: 6,
+                                padding: "3px 10px",
+                                fontWeight: 800,
+                                fontSize: 14,
+                                color: "#f0c040",
+                              }}
+                            >
+                              {f.homeGoals}-{f.awayGoals}
+                            </div>
+                            <span
+                              style={{
+                                fontWeight: 600,
+                                fontSize: 13,
+                                flex: 1,
+                                textAlign: "right",
+                                color:
+                                  f.awayGoals > f.homeGoals
+                                    ? "#27ae60"
+                                    : f.awayGoals < f.homeGoals
+                                      ? "#8a7a5a"
+                                      : "#f0e6d2",
+                              }}
+                            >
+                              {f.away}
+                            </span>
+                            <Crest
+                              emoji={
+                                teams.find((t) => t.name === f.away)?.crestEmoji
+                              }
+                              size={22}
+                            />
+                          </div>
+                          {!canEdit && (
+                            <div
+                              style={{
+                                fontSize: 10,
+                                color: "#5a5040",
+                                textAlign: "right",
+                                marginTop: 4,
+                              }}
+                            >
+                              🔒 Solo pueden editar los equipos implicados
+                            </div>
+                          )}
+                          {(f.scorers?.length > 0 || f.mvp) && (
+                            <div
+                              style={{
+                                marginTop: 8,
+                                paddingTop: 8,
+                                borderTop: "1px solid #241e10",
+                              }}
+                            >
+                              {[f.home, f.away].map((teamName) => {
+                                const teamScorers = (f.scorers || []).filter(
+                                  (s) => s.team === teamName,
+                                );
+                                const teamAssists = (f.assists || []).filter(
+                                  (a) => a.team === teamName,
+                                );
+                                if (
+                                  teamScorers.length === 0 &&
+                                  teamAssists.length === 0
+                                )
+                                  return null;
+                                const t = teams.find(
+                                  (x) => x.name === teamName,
+                                );
+                                const getPlayer = (id) =>
+                                  allPlayersOf(t).find((p) => p.id === id);
+                                return (
+                                  <div
+                                    key={teamName}
+                                    style={{ marginBottom: 6 }}
+                                  >
+                                    <div
+                                      style={{
+                                        fontSize: 10,
+                                        color: "#8a7a5a",
+                                        fontWeight: 700,
+                                        marginBottom: 3,
+                                      }}
+                                    >
+                                      {teamName}
+                                    </div>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        flexWrap: "wrap",
+                                        gap: 4,
+                                      }}
+                                    >
+                                      {teamScorers.map((s, i) => (
+                                        <span
+                                          key={i}
+                                          style={{
+                                            background: "rgba(192,57,43,0.15)",
+                                            border: "1px solid #c0392b",
+                                            borderRadius: 6,
+                                            padding: "2px 6px",
+                                            fontSize: 10,
+                                            color: "#f0e6d2",
+                                          }}
+                                        >
+                                          ⚽{" "}
+                                          {getPlayer(s.playerId)?.name || "?"}
+                                        </span>
+                                      ))}
+                                      {teamAssists.map((a, i) => (
+                                        <span
+                                          key={i}
+                                          style={{
+                                            background: "rgba(39,174,96,0.1)",
+                                            border: "1px solid #27ae60",
+                                            borderRadius: 6,
+                                            padding: "2px 6px",
+                                            fontSize: 10,
+                                            color: "#f0e6d2",
+                                          }}
+                                        >
+                                          🅰️{" "}
+                                          {getPlayer(a.playerId)?.name || "?"}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {f.mvp && (
+                                <div style={{ marginTop: 4 }}>
+                                  <span
+                                    style={{
+                                      background: "rgba(240,192,64,0.15)",
+                                      border: "1px solid #f0c040",
+                                      borderRadius: 6,
+                                      padding: "2px 8px",
+                                      fontSize: 10,
+                                      color: "#f0c040",
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    🏅{" "}
+                                    {(() => {
+                                      for (const t of teams) {
+                                        const p = allPlayersOf(t).find(
+                                          (pp) => pp.id === f.mvp,
+                                        );
+                                        if (p) return p.name;
+                                      }
+                                      return "?";
+                                    })()}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+          </div>
+        )}
+
+        {/* ══ SQUADS ══ */}
+        {view === VIEWS.SQUADS &&
+          (() => {
+            const isOwn = !viewingTeam || viewingTeam === myTeamName;
+            const t = isOwn
+              ? myTeamObj
+              : teams.find((x) => x.name === viewingTeam);
+            if (!t?.squad)
+              return (
+                <p
+                  style={{
+                    color: "#8a7a5a",
+                    fontSize: 13,
+                    textAlign: "center",
+                    marginTop: 30,
+                  }}
+                >
+                  Sin equipo todavía.
+                </p>
+              );
+            const allP = allPlayersOf(t);
+            const lineup = t.lineup || {
+              formation: FORMATION_NAMES[0],
+              slots: {},
+            };
+            const placedIds = Object.values(lineup.slots).filter((pid) =>
+              allP.some((p) => p.id === pid),
+            );
+
+            return (
+              <div>
+                {!isOwn && (
+                  <button
+                    onClick={() => {
+                      setViewingTeam(null);
+                      setView(VIEWS.TABLE);
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "none",
+                      color: "#e8c252",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      marginBottom: 10,
+                      padding: 0,
+                    }}
+                  >
+                    ← Volver a clasificación
+                  </button>
+                )}
+                <h2
+                  style={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 21,
+                    marginBottom: 6,
+                  }}
+                >
+                  {isOwn ? "Tu equipo" : t.name}
+                </h2>
+                {!isOwn && (
+                  <p
+                    style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 14 }}
+                  >
+                    Solo puedes ofertar o pagar la cláusula. Esta plantilla no
+                    es tuya.
+                  </p>
+                )}
+
+                <div style={card}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 14,
+                    }}
+                  >
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 10 }}
+                    >
+                      {isOwn ? (
+                        <EmojiCrestPicker
+                          emoji={t.crestEmoji}
+                          size={32}
+                          onChange={(emoji) => updateTeamEmoji(t.name, emoji)}
+                        />
+                      ) : (
+                        <Crest emoji={t.crestEmoji} size={32} />
+                      )}
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>
+                          {t.name}
+                        </div>
+                        <div style={{ color: "#8a7a5a", fontSize: 11 }}>
+                          {allP.length}/{MAX_SQUAD} jugadores
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                    <button
+                      onClick={() => setSquadTab("lineup")}
+                      style={{ flex: 1, ...pill(squadTab === "lineup") }}
+                    >
+                      ⚽ Alineación
+                    </button>
+                    <button
+                      onClick={() => setSquadTab("squad")}
+                      style={{ flex: 1, ...pill(squadTab === "squad") }}
+                    >
+                      👥 Plantilla
+                    </button>
+                  </div>
+
+                  {squadTab === "lineup" &&
+                    (() => {
+                      const bench = allP.filter(
+                        (p) => !placedIds.includes(p.id),
+                      );
+                      return (
+                        <div>
+                          {isOwn && (
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 6,
+                                flexWrap: "wrap",
+                                marginBottom: 12,
+                              }}
+                            >
+                              {FORMATION_NAMES.map((f) => (
+                                <button
+                                  key={f}
+                                  onClick={() => setLineupFormation(t.name, f)}
+                                  style={pill(lineup.formation === f)}
+                                >
+                                  {f}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <LineupField
+                            team={t}
+                            onSlotTap={
+                              isOwn
+                                ? (slotId) =>
+                                    setLineupSlotModal({
+                                      teamName: t.name,
+                                      slotId,
+                                    })
+                                : () => {}
+                            }
+                          />
+                          <div
+                            style={{
+                              color: "#8a7a5a",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              marginBottom: 4,
+                            }}
+                          >
+                            SUPLENTES ({bench.length})
+                          </div>
+                          {bench.length === 0 && (
+                            <p
+                              style={{
+                                color: "#3a5a7a",
+                                fontSize: 12,
+                                marginBottom: 8,
+                              }}
+                            >
+                              Todos los jugadores están en el campo.
+                            </p>
+                          )}
+                          {bench.map((p, i) => (
+                            <PlayerRow
+                              key={i}
+                              p={p}
+                              teamName={t.name}
+                              mode={isOwn ? "own" : "other"}
+                            />
+                          ))}
+                        </div>
+                      );
+                    })()}
+
+                  {squadTab === "squad" && (
+                    <div>
+                      {t.squad.star && (
+                        <div
+                          style={{
+                            background: "#0a1520",
+                            borderRadius: 10,
+                            padding: "10px 12px",
+                            marginBottom: 10,
+                          }}
+                        >
+                          <div
+                            style={{
+                              color: "#f0c040",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              marginBottom: 6,
+                            }}
+                          >
+                            ⭐ ESTRELLA
+                          </div>
+                          <PlayerRow
+                            p={t.squad.star}
+                            teamName={t.name}
+                            mode={isOwn ? "own" : "other"}
+                          />
+                        </div>
+                      )}
+                      <div
+                        style={{
+                          color: "#8a7a5a",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          marginBottom: 4,
+                        }}
+                      >
+                        PLANTILLA
+                      </div>
+                      {isOwn ? (
+                        <SquadDndList
+                          teamName={t.name}
+                          squad={t.squad.squad}
+                          onReorder={reorderSquad}
+                        />
+                      ) : (
+                        t.squad.squad.map((p, i) => (
+                          <PlayerRow
+                            key={i}
+                            p={p}
+                            teamName={t.name}
+                            mode="other"
+                          />
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+        {/* ══ MARKET ══ */}
+        {view === VIEWS.MARKET && (
+          <div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                marginBottom: 4,
+              }}
+            >
+              <h2
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 21,
+                  margin: 0,
+                }}
+              >
+                🏪 Mercado
+              </h2>
+              <span
+                style={{
+                  color: "#f0c040",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  fontFamily: "monospace",
+                }}
+              >
+                ⏱ {fmtCountdown(marketCountdownMs)}
+              </span>
+            </div>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 14 }}>
+              Toca un jugador para pujar. Verás cuántas pujas tiene, pero no
+              quién las hizo.
+            </p>
+
+            {availableLegends.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div
+                  style={{
+                    color: "#c0392b",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  🏆 Leyendas disponibles ({fmtM(LEGEND_MARKET_PRICE)} cada una)
+                </div>
+
+                <div
+                  style={{
+                    ...card,
+                    background: "linear-gradient(135deg,#1a0d10,#15110a)",
+                    border: "1px solid #c0392b",
+                    textAlign: "center",
+                    padding: "20px 16px",
+                  }}
+                >
+                  <div
+                    style={{ fontSize: 13, color: "#8a7a5a", marginBottom: 12 }}
+                  >
+                    {availableLegends.length} leyenda
+                    {availableLegends.length !== 1 ? "s" : ""} disponible
+                    {availableLegends.length !== 1 ? "s" : ""}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const random =
+                        availableLegends[
+                          Math.floor(Math.random() * availableLegends.length)
+                        ];
+                      setLegendBuyConfirm(random);
+                    }}
+                    style={{
+                      ...btn("#c0392b"),
+                      padding: "10px 20px",
+                      fontSize: 13,
+                    }}
+                  >
+                    🎲 Obtener leyenda aleatoria — {fmtM(LEGEND_MARKET_PRICE)}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {marketList.map((player) => {
+                const myBid = myTeamName
+                  ? bids[player.marketId]?.[myTeamName] || 0
+                  : 0;
+                const totalBids = Object.keys(
+                  bids[player.marketId] || {},
+                ).length;
+                return (
+                  <div
+                    key={player.marketId}
+                    onClick={() => openBidModal(player)}
+                    style={{
+                      ...card,
+                      display: "flex",
+                      gap: 12,
+                      alignItems: "center",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
+                      style={{
+                        background: ratingColor(player.overall),
+                        borderRadius: 10,
+                        minWidth: 48,
+                        height: 48,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 800,
+                        fontSize: 19,
+                        color: "#000",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {player.overall}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          marginBottom: 3,
+                        }}
+                      >
+                        <span
+                          style={{
+                            background: posColor(player.pos),
+                            color: "#fff",
+                            borderRadius: 4,
+                            padding: "2px 6px",
+                            fontSize: 10,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {player.pos}
+                        </span>
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 14,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {player.name}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#8a7a5a" }}>
+                        {player.club}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 10,
+                          fontSize: 11,
+                          marginTop: 4,
+                        }}
+                      >
+                        <span style={{ color: "#f0c040" }}>
+                          Min. {fmtM(player.baseValue)}
+                        </span>
+                        <span style={{ color: "#8a7a5a" }}>
+                          👥 {totalBids} {totalBids === 1 ? "puja" : "pujas"}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      {myBid > 0 ? (
+                        <div
+                          style={{
+                            background: "#1a5f3a",
+                            borderRadius: 8,
+                            padding: "6px 10px",
+                          }}
+                        >
+                          <div style={{ fontSize: 10, color: "#8fd9a8" }}>
+                            Tu puja
+                          </div>
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              color: "#27ae60",
+                              fontSize: 14,
+                            }}
+                          >
+                            {fmtM(myBid)}
+                          </div>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 20, color: "#8a7a5a" }}>
+                          ›
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {isAdmin && (
+              <button
+                onClick={resolveAuctions}
+                style={{
+                  ...btn("#8e44ad"),
+                  marginTop: 16,
+                  fontSize: 13,
+                  padding: "10px",
+                }}
+              >
+                ⚡ Forzar resolución del mercado
+              </button>
+            )}
+
+            {(() => {
+              const listedPlayers = teams.flatMap((t) =>
+                allPlayersOf(t)
+                  .filter((p) => p.listedForSale)
+                  .map((p) => ({ ...p, ownerTeam: t.name })),
+              );
+              if (listedPlayers.length === 0) return null;
+              return (
+                <div style={{ marginTop: 24 }}>
+                  <h3
+                    style={{
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: 15,
+                      marginBottom: 6,
+                    }}
+                  >
+                    🔄 En venta por otros equipos
+                  </h3>
+                  <p
+                    style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 10 }}
+                  >
+                    Haz una oferta; el equipo propietario decide si la acepta.
+                  </p>
+                  {listedPlayers.map((p, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        ...card,
+                        display: "flex",
+                        gap: 12,
+                        alignItems: "center",
+                      }}
+                    >
+                      <div
+                        style={{
+                          background: ratingColor(p.overall),
+                          borderRadius: 10,
+                          minWidth: 42,
+                          height: 42,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 800,
+                          fontSize: 16,
+                          color: "#000",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {p.overall}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <span
+                            style={{
+                              background: posColor(p.pos),
+                              color: "#fff",
+                              borderRadius: 4,
+                              padding: "2px 6px",
+                              fontSize: 10,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {p.pos}
+                          </span>
+                          <span style={{ fontWeight: 700, fontSize: 14 }}>
+                            {p.name}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: "#8a7a5a" }}>
+                          de {p.ownerTeam}
+                        </div>
+                      </div>
+                      <div>
+                        {p.ownerTeam !== myTeamName && (
+                          <button
+                            onClick={() => openOfferModal(p.ownerTeam, p)}
+                            style={btn("#c9a227")}
+                          >
+                            Ofertar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {marketHistory.length > 0 && (
+              <div style={{ marginTop: 24 }}>
+                <h3
+                  style={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 15,
+                    marginBottom: 10,
+                  }}
+                >
+                  📜 Fichajes recientes
+                </h3>
+                {[...marketHistory]
+                  .reverse()
+                  .slice(
+                    (pageMarketHistory - 1) * ITEMS_PER_PAGE,
+                    pageMarketHistory * ITEMS_PER_PAGE,
+                  )
+                  .map((h, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        ...card,
+                        padding: "10px 14px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: ratingColor(h.overall),
+                          borderRadius: 6,
+                          minWidth: 30,
+                          height: 30,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 800,
+                          fontSize: 12,
+                          color: "#000",
+                        }}
+                      >
+                        {h.overall}
+                      </span>
+                      <span style={{ fontWeight: 600, flex: 1, fontSize: 13 }}>
+                        {h.player}
+                      </span>
+                      <span
+                        style={{
+                          color: "#27ae60",
+                          fontWeight: 700,
+                          fontSize: 12,
+                        }}
+                      >
+                        {h.winner}
+                      </span>
+                      <span
+                        style={{
+                          color: "#f0c040",
+                          fontWeight: 700,
+                          fontSize: 12,
+                        }}
+                      >
+                        {fmtM(h.amount)}
+                      </span>
+                    </div>
+                  ))}
+
+                <Pagination
+                  page={pageMarketHistory}
+                  totalPages={Math.max(
+                    1,
+                    Math.ceil(marketHistory.length / ITEMS_PER_PAGE),
+                  )}
+                  onPrev={() => setPageMarketHistory((p) => p - 1)}
+                  onNext={() => setPageMarketHistory((p) => p + 1)}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ TRANSFERS (notifications + offers + history) ══ */}
+        {view === VIEWS.TRANSFERS &&
+          (() => {
+            const incomingOffers = offers.filter(
+              (o) => o.toTeam === myTeamName && o.status === "pending",
+            );
+            const outgoingOffers = offers.filter(
+              (o) => o.fromTeam === myTeamName && o.status === "pending",
+            );
+            const resolvedOffers = offers
+              .filter(
+                (o) =>
+                  (o.fromTeam === myTeamName || o.toTeam === myTeamName) &&
+                  o.status !== "pending",
+              )
+              .sort((a, b) => b.createdAt - a.createdAt);
+            return (
+              <div>
+                <h2
+                  style={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 21,
+                    marginBottom: 14,
+                  }}
+                >
+                  🔄 Traspasos
+                </h2>
+
+                {incomingOffers.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div
+                      style={{
+                        color: "#f0c040",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Ofertas recibidas ({incomingOffers.length})
+                    </div>
+                    {incomingOffers.map((o) => (
+                      <div
+                        key={o.offerId}
+                        style={{
+                          ...card,
+                          display: "flex",
+                          gap: 10,
+                          alignItems: "center",
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: ratingColor(o.player.overall),
+                            borderRadius: 8,
+                            minWidth: 42,
+                            height: 42,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: 800,
+                            fontSize: 16,
+                            color: "#000",
+                          }}
+                        >
+                          {o.player.overall}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, fontSize: 14 }}>
+                            {o.player.name}
+                          </div>
+                          <div style={{ fontSize: 11, color: "#8a7a5a" }}>
+                            {o.fromTeam} ofrece{" "}
+                            <span style={{ color: "#27ae60", fontWeight: 700 }}>
+                              {fmtM(o.amount)}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => acceptOffer(o)}
+                          style={{
+                            ...btn("#27ae60"),
+                            width: "auto",
+                            padding: "7px 12px",
+                            fontSize: 12,
+                          }}
+                        >
+                          Aceptar
+                        </button>
+                        <button
+                          onClick={() => rejectOffer(o)}
+                          style={{
+                            ...btn("transparent"),
+                            width: "auto",
+                            border: "1px solid #c0392b",
+                            color: "#c0392b",
+                            padding: "7px 12px",
+                            fontSize: 12,
+                          }}
+                        >
+                          Rechazar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {outgoingOffers.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div
+                      style={{
+                        color: "#c9b88a",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Tus ofertas pendientes ({outgoingOffers.length})
+                    </div>
+                    {outgoingOffers.map((o) => (
+                      <div
+                        key={o.offerId}
+                        style={{
+                          ...card,
+                          display: "flex",
+                          gap: 10,
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: ratingColor(o.player.overall),
+                            borderRadius: 8,
+                            minWidth: 42,
+                            height: 42,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: 800,
+                            fontSize: 16,
+                            color: "#000",
+                          }}
+                        >
+                          {o.player.overall}
+                        </div>
+
+                        <div
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                            minWidth: 0,
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>
+                              {o.player.name}
+                            </div>
+
+                            <div style={{ fontSize: 11, color: "#8a7a5a" }}>
+                              A {o.toTeam} · ofreciste{" "}
+                              <span
+                                style={{ color: "#f0c040", fontWeight: 700 }}
+                              >
+                                {fmtM(o.amount)}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: 8,
+                            }}
+                          >
+                            <span
+                              style={{
+                                color: "#8a7a5a",
+                                fontSize: 11,
+                                fontStyle: "italic",
+                              }}
+                            >
+                              Esperando respuesta...
+                            </span>
+
+                            <button
+                              onClick={() => cancelOffer(o)}
+                              style={{
+                                ...btn("#b95a1b"),
+                                width: "auto",
+                                padding: "6px 12px",
+                                fontSize: 12,
+                              }}
+                            >
+                              Cancelar oferta
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    color: "#c9b88a",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  🔔 Notificaciones
+                </div>
+                {notifications.length === 0 ? (
+                  <p
+                    style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 20 }}
+                  >
+                    Sin notificaciones todavía.
+                  </p>
+                ) : (
+                  <>
+                    {visibleNotifications.map((n) => (
+                      <div key={n.id} style={{ ...card, padding: "10px 14px" }}>
+                        <div style={{ fontSize: 13 }}>{n.text}</div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: "#8a7a5a",
+                            marginTop: 4,
+                          }}
+                        >
+                          {new Date(n.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+
+                    <Pagination
+                      page={pageNotifications}
+                      totalPages={totalPagesNotifications}
+                      onPrev={() => setPageNotifications((p) => p - 1)}
+                      onNext={() => setPageNotifications((p) => p + 1)}
+                    />
+                  </>
+                )}
+
+                {resolvedOffers.length > 0 && (
+                  <div style={{ marginTop: 20 }}>
+                    <div
+                      style={{
+                        color: "#c9b88a",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Historial de ofertas
+                    </div>
+                    {resolvedOffers
+                      .slice(
+                        (pageResolvedOffers - 1) * ITEMS_PER_PAGE,
+                        pageResolvedOffers * ITEMS_PER_PAGE,
+                      )
+                      .map((o) => (
+                        <div
+                          key={o.offerId}
+                          style={{
+                            ...card,
+                            padding: "10px 14px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <span
+                            style={{
+                              background: ratingColor(o.player.overall),
+                              borderRadius: 6,
+                              minWidth: 30,
+                              height: 30,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: 800,
+                              fontSize: 12,
+                              color: "#000",
+                            }}
+                          >
+                            {o.player.overall}
+                          </span>
+                          <span
+                            style={{ fontWeight: 600, flex: 1, fontSize: 13 }}
+                          >
+                            {o.player.name}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color:
+                                o.status === "accepted" ? "#27ae60" : "#c0392b",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {o.status === "accepted" ? "Aceptada" : "Rechazada"}
+                          </span>
+                          <span
+                            style={{
+                              color: "#f0c040",
+                              fontWeight: 700,
+                              fontSize: 12,
+                            }}
+                          >
+                            {fmtM(o.amount)}
+                          </span>
+                        </div>
+                      ))}
+
+                    <Pagination
+                      page={pageResolvedOffers}
+                      totalPages={Math.max(
+                        1,
+                        Math.ceil(resolvedOffers.length / ITEMS_PER_PAGE),
+                      )}
+                      onPrev={() => setPageResolvedOffers((p) => p - 1)}
+                      onNext={() => setPageResolvedOffers((p) => p + 1)}
+                    />
+                  </div>
+                )}
+
+                {marketHistory.length > 0 && (
+                  <div style={{ marginTop: 20 }}>
+                    <div
+                      style={{
+                        color: "#c9b88a",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      Fichajes del mercado diario
+                    </div>
+                    {[...marketHistory]
+                      .reverse()
+                      .slice(
+                        (pageTransferHistory - 1) * ITEMS_PER_PAGE,
+                        pageTransferHistory * ITEMS_PER_PAGE,
+                      )
+
+                      .map((h, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            ...card,
+                            padding: "10px 14px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <span
+                            style={{
+                              background: ratingColor(h.overall),
+                              borderRadius: 6,
+                              minWidth: 30,
+                              height: 30,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: 800,
+                              fontSize: 12,
+                              color: "#000",
+                            }}
+                          >
+                            {h.overall}
+                          </span>
+                          <span
+                            style={{ fontWeight: 600, flex: 1, fontSize: 13 }}
+                          >
+                            {h.player}
+                          </span>
+                          <span
+                            style={{
+                              color: "#27ae60",
+                              fontWeight: 700,
+                              fontSize: 12,
+                            }}
+                          >
+                            {h.winner}
+                          </span>
+                          <span
+                            style={{
+                              color: "#f0c040",
+                              fontWeight: 700,
+                              fontSize: 12,
+                            }}
+                          >
+                            {fmtM(h.amount)}
+                          </span>
+                        </div>
+                      ))}
+
+                    <Pagination
+                      page={pageTransferHistory}
+                      totalPages={Math.max(
+                        1,
+                        Math.ceil(marketHistory.length / ITEMS_PER_PAGE),
+                      )}
+                      onPrev={() => setPageTransferHistory((p) => p - 1)}
+                      onNext={() => setPageTransferHistory((p) => p + 1)}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+        {/* ══ STATS ══ */}
+        {view === VIEWS.STATS && (
+          <div>
+            <h2
+              style={{
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 21,
+                marginBottom: 14,
+              }}
+            >
+              📊 Estadísticas
+            </h2>
+            <StatBlock
+              title="⚽ Máximos Goleadores"
+              data={topScorers}
+              field="goals"
+              color="#c0392b"
+            />
+            <StatBlock
+              title="🅰️ Máximos Asistentes"
+              data={topAssists}
+              field="assists"
+              color="#27ae60"
+            />
+            <StatBlock
+              title="🏅 Más MVPs"
+              data={topMvps}
+              field="mvps"
+              color="#f0c040"
+            />
+            <div
+              style={{
+                background: "#15110a",
+                border: "1px solid #2e2615",
+                borderRadius: 14,
+                padding: "14px 16px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  marginBottom: 10,
+                }}
+              >
+                🧤 Trofeo Zamora
+              </div>
+              {zamoraRanking.length === 0 ? (
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>Sin datos aún.</p>
+              ) : (
+                zamoraRanking.map((z, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "7px 0",
+                      borderBottom: "1px solid #241e10",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: i === 0 ? "#e8c252" : "#8a7a5a",
+                        fontWeight: 800,
+                        minWidth: 18,
+                        fontSize: 13,
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 13,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {z.keeper.name}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#8a7a5a" }}>
+                        {z.teamName}
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        fontWeight: 800,
+                        color: "#e8c252",
+                        fontSize: 15,
+                        minWidth: 50,
+                        textAlign: "right",
+                      }}
+                    >
+                      {z.ga} enc.
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+            {/* TOP REVALORIZADOS */}
+            <div
+              style={{
+                background: "#15110a",
+                border: "1px solid #2e2615",
+                borderRadius: 14,
+                padding: "14px 16px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  marginBottom: 10,
+                }}
+              >
+                📈 Más revalorizados
+              </div>
+              {topRevalorizados.length === 0 ? (
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>Sin datos aún.</p>
+              ) : (
+                topRevalorizados.map((p, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "7px 0",
+                      borderBottom: "1px solid #241e10",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: i === 0 ? "#27ae60" : "#8a7a5a",
+                        fontWeight: 800,
+                        minWidth: 18,
+                        fontSize: 13,
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 13,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {p.name}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#8a7a5a" }}>
+                        {p.teamName} · base{" "}
+                        {fmtM(playerValue(p.overall, p.pos))}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 800,
+                          color: "#27ae60",
+                          fontSize: 14,
+                        }}
+                      >
+                        {fmtM(p.marketValue || playerValue(p.overall, p.pos))}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          color: "#27ae60",
+                          fontWeight: 700,
+                        }}
+                      >
+                        +{fmtM(p.revalorizacion)}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* TOP PARTICIPACIONES DE GOL */}
+            <div
+              style={{
+                background: "#15110a",
+                border: "1px solid #2e2615",
+                borderRadius: 14,
+                padding: "14px 16px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  marginBottom: 10,
+                }}
+              >
+                🎯 Participaciones en gol
+              </div>
+              {topParticipaciones.length === 0 ? (
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>Sin datos aún.</p>
+              ) : (
+                topParticipaciones.map((p, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "7px 0",
+                      borderBottom: "1px solid #241e10",
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: i === 0 ? "#c0392b" : "#8a7a5a",
+                        fontWeight: 800,
+                        minWidth: 18,
+                        fontSize: 13,
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 13,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {p.name}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#8a7a5a" }}>
+                        {p.teamName}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, color: "#8a7a5a" }}>
+                        ⚽ {p.goals || 0}
+                      </span>
+                      <span style={{ fontSize: 11, color: "#8a7a5a" }}>
+                        🅰️ {p.assists || 0}
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: 800,
+                          color: "#c0392b",
+                          fontSize: 15,
+                          minWidth: 22,
+                          textAlign: "right",
+                        }}
+                      >
+                        {p.participaciones}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* MAYORES GOLEADAS */}
+            <div
+              style={{
+                background: "#15110a",
+                border: "1px solid #2e2615",
+                borderRadius: 14,
+                padding: "14px 16px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  marginBottom: 10,
+                }}
+              >
+                💥 Mayores goleadas
+              </div>
+              {mayoresGoleadas.length === 0 ? (
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>
+                  Sin partidos jugados aún.
+                </p>
+              ) : (
+                mayoresGoleadas.map((f, i) => {
+                  const homeWon = f.homeGoals > f.awayGoals;
+                  const awayWon = f.awayGoals > f.homeGoals;
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 0",
+                        borderBottom: "1px solid #241e10",
+                      }}
+                    >
+                      <span
+                        style={{
+                          color: i === 0 ? "#f0c040" : "#8a7a5a",
+                          fontWeight: 800,
+                          minWidth: 18,
+                          fontSize: 13,
+                        }}
+                      >
+                        {i + 1}
+                      </span>
+                      <span
+                        style={{
+                          flex: 1,
+                          fontWeight: homeWon ? 700 : 400,
+                          fontSize: 12,
+                          color: homeWon ? "#f0e6d2" : "#8a7a5a",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {f.home}
+                      </span>
+                      <div
+                        style={{
+                          background: "#0a0805",
+                          border: "1px solid #2e2615",
+                          borderRadius: 6,
+                          padding: "3px 10px",
+                          fontWeight: 800,
+                          fontSize: 14,
+                          color: "#f0c040",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {f.homeGoals}-{f.awayGoals}
+                      </div>
+                      <span
+                        style={{
+                          flex: 1,
+                          fontWeight: awayWon ? 700 : 400,
+                          fontSize: 12,
+                          color: awayWon ? "#f0e6d2" : "#8a7a5a",
+                          textAlign: "right",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {f.away}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: "#c0392b",
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        Δ{f.diff}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <p
+              style={{
+                marginTop: 14,
+                fontSize: 11,
+                color: "#3a5a7a",
+                lineHeight: 1.6,
+              }}
+            >
+              🏆 Fin de temporada: 1º {fmtM(finalRankingPrize(0))} · 2º{" "}
+              {fmtM(finalRankingPrize(1))} · 3º {fmtM(finalRankingPrize(2))}{" "}
+              (cada puesto -30%) · Máx. goleador +{fmtM(SEASON_PRIZE_TOPSCORER)}{" "}
+              · Máx. asistente +{fmtM(SEASON_PRIZE_TOPASSIST)} · Mejor jugador +
+              {fmtM(SEASON_PRIZE_MVP)} · Zamora +{fmtM(SEASON_PRIZE_ZAMORA)}
+            </p>
+          </div>
+        )}
+
+        {/* ══ TOURNAMENT ══ */}
+        {view === VIEWS.TOURNAMENT && (
+          <div>
+            <h2
+              style={{
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 21,
+                marginBottom: 6,
+              }}
+            >
+              🏅 Torneo
+            </h2>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 16 }}>
+              Eliminatoria directa (solo ida), independiente de la liga regular.
+              No afecta presupuesto ni estadísticas.
+            </p>
+
+            {!tournamentBracket && (
+              <div style={{ textAlign: "center", padding: "30px 20px" }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>🏅</div>
+                <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 16 }}>
+                  Todavía no se ha sorteado ningún torneo.
+                </p>
+                {isAdmin ? (
+                  <button
+                    onClick={drawTournament}
+                    style={btn("linear-gradient(135deg,#c9a227,#e8c252)")}
+                  >
+                    🎲 Sortear Torneo
+                  </button>
+                ) : (
+                  <p style={{ color: "#8a7a5a", fontSize: 12 }}>
+                    Solo el admin puede sortear el torneo.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {tournamentBracket &&
+              (() => {
+                const totalRounds = tournamentBracket.length;
+                const roundName = (idx) => {
+                  const remaining = totalRounds - idx;
+                  if (remaining === 1) return "Final";
+                  if (remaining === 2) return "Semifinal";
+                  if (remaining === 3) return "Cuartos";
+                  if (remaining === 4) return "Octavos";
+                  return `Ronda ${idx + 1}`;
+                };
+                const finalMatch = tournamentBracket[totalRounds - 1][0];
+                const champion = finalMatch?.winner;
+                return (
+                  <div>
+                    {champion && (
+                      <div
+                        style={{
+                          background: "linear-gradient(135deg,#2e2615,#2a4060)",
+                          border: "1px solid #f0c040",
+                          borderRadius: 12,
+                          padding: "14px 16px",
+                          marginBottom: 16,
+                          textAlign: "center",
+                        }}
+                      >
+                        <div style={{ fontSize: 24, marginBottom: 6 }}>🏆</div>
+                        <div
+                          style={{
+                            color: "#f0c040",
+                            fontWeight: 800,
+                            fontSize: 16,
+                            marginBottom: championPrize?.claimed ? 0 : 14,
+                          }}
+                        >
+                          {champion} es el campeón
+                        </div>
+
+                        {!championPrize && (
+                          <div>
+                            <p
+                              style={{
+                                color: "#c9b88a",
+                                fontSize: 12,
+                                marginBottom: 10,
+                              }}
+                            >
+                              Elige el premio:
+                            </p>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                flexWrap: "wrap",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <button
+                                onClick={() => claimMoneyPrize(champion)}
+                                style={{ ...btn("#27ae60"), fontSize: 13 }}
+                              >
+                                💰 {fmtM(TOURNAMENT_PRIZE_MONEY)}
+                              </button>
+                              <button
+                                onClick={startPlayerPick}
+                                style={{ ...btn("#8e44ad"), fontSize: 13 }}
+                              >
+                                🎴 Player Pick
+                              </button>
+                              <button
+                                onClick={startLegendPick}
+                                style={{ ...btn("#c0392b"), fontSize: 13 }}
+                              >
+                                🏆 Leyenda
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {championPrize?.type === "money" &&
+                          championPrize.claimed && (
+                            <p
+                              style={{
+                                color: "#27ae60",
+                                fontWeight: 700,
+                                fontSize: 14,
+                              }}
+                            >
+                              💰 Premio cobrado: {fmtM(TOURNAMENT_PRIZE_MONEY)}
+                            </p>
+                          )}
+
+                        {(championPrize?.type === "playerpick" ||
+                          championPrize?.type === "legendpick") &&
+                          !championPrize.claimed && (
+                            <div>
+                              <p
+                                style={{
+                                  color: "#c9b88a",
+                                  fontSize: 12,
+                                  marginBottom: 12,
+                                }}
+                              >
+                                {championPrize.cards.length > 1
+                                  ? "Toca una carta para revelarla, luego selecciónala y confirma."
+                                  : "Toca la carta para revelar tu leyenda y confirma."}
+                              </p>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: 10,
+                                  justifyContent: "center",
+                                  marginBottom: 14,
+                                }}
+                              >
+                                {championPrize.cards.map((p, idx) => {
+                                  const isRevealed =
+                                    championPrize.revealed[idx];
+                                  const isSelected =
+                                    championPrize.selectedIdx === idx;
+                                  return (
+                                    <div
+                                      key={idx}
+                                      onClick={() =>
+                                        isRevealed
+                                          ? selectCard(idx)
+                                          : revealCard(idx)
+                                      }
+                                      style={{
+                                        width: 90,
+                                        height: 130,
+                                        borderRadius: 10,
+                                        cursor: "pointer",
+                                        background: isRevealed
+                                          ? "#15110a"
+                                          : championPrize.type === "legendpick"
+                                            ? "linear-gradient(135deg,#c0392b,#15110a)"
+                                            : "linear-gradient(135deg,#c9a227,#15110a)",
+                                        border: isSelected
+                                          ? "2px solid #f0c040"
+                                          : "1px solid #2e2615",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        padding: 8,
+                                        transition: "transform 0.15s",
+                                        transform: isSelected
+                                          ? "scale(1.05)"
+                                          : "scale(1)",
+                                      }}
+                                    >
+                                      {!isRevealed ? (
+                                        <>
+                                          <span style={{ fontSize: 28 }}>
+                                            {championPrize.type === "legendpick"
+                                              ? "🏆"
+                                              : "🎴"}
+                                          </span>
+                                          <span
+                                            style={{
+                                              fontSize: 10,
+                                              color: "#c9b88a",
+                                              marginTop: 6,
+                                            }}
+                                          >
+                                            Toca para revelar
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span
+                                            style={{
+                                              background: posColor(p.pos),
+                                              color: "#fff",
+                                              borderRadius: 4,
+                                              padding: "2px 6px",
+                                              fontSize: 10,
+                                              fontWeight: 700,
+                                              marginBottom: 6,
+                                            }}
+                                          >
+                                            {p.pos}
+                                          </span>
+                                          <span
+                                            style={{
+                                              fontWeight: 700,
+                                              fontSize: 12,
+                                              textAlign: "center",
+                                              lineHeight: 1.2,
+                                              marginBottom: 4,
+                                            }}
+                                          >
+                                            {p.name}
+                                          </span>
+                                          <span
+                                            style={{
+                                              fontWeight: 800,
+                                              color: ratingColor(p.overall),
+                                              fontSize: 18,
+                                            }}
+                                          >
+                                            {p.overall}
+                                          </span>
+                                          {isSelected && (
+                                            <span
+                                              style={{
+                                                color: "#f0c040",
+                                                fontSize: 10,
+                                                marginTop: 4,
+                                              }}
+                                            >
+                                              ✓ Elegido
+                                            </span>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              {championPrize.selectedIdx !== null && (
+                                <button
+                                  onClick={() => confirmPlayerPick(champion)}
+                                  style={{
+                                    ...btn(
+                                      "linear-gradient(135deg,#c9a227,#e8c252)",
+                                    ),
+                                    fontSize: 13,
+                                  }}
+                                >
+                                  Confirmar selección
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                        {(championPrize?.type === "playerpick" ||
+                          championPrize?.type === "legendpick") &&
+                          championPrize.claimed && (
+                            <p
+                              style={{
+                                color: "#27ae60",
+                                fontWeight: 700,
+                                fontSize: 14,
+                              }}
+                            >
+                              {championPrize.type === "legendpick"
+                                ? "🏆"
+                                : "🎴"}{" "}
+                              {
+                                championPrize.cards[championPrize.selectedIdx]
+                                  .name
+                              }{" "}
+                              se unió al equipo
+                            </p>
+                          )}
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 14,
+                        overflowX: "auto",
+                        paddingBottom: 10,
+                      }}
+                    >
+                      {tournamentBracket.map((round, ri) => (
+                        <div
+                          key={ri}
+                          style={{
+                            minWidth: 170,
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-around",
+                            gap: Math.max(10, 16 * (ri + 1)),
+                          }}
+                        >
+                          <div
+                            style={{
+                              color: "#c9b88a",
+                              fontSize: 11,
+                              fontWeight: 700,
+                              textAlign: "center",
+                              marginBottom: 4,
+                              textTransform: "uppercase",
+                              letterSpacing: 0.5,
+                            }}
+                          >
+                            {roundName(ri)}
+                          </div>
+                          {round.map((m, mi) => {
+                            const t1 = teams.find((t) => t.name === m.home);
+                            const t2 = teams.find((t) => t.name === m.away);
+                            const isBye = m.home === null || m.away === null;
+                            const squadsBlocked =
+                              !isBye &&
+                              (hasIncompleteSquad(t1) ||
+                                hasIncompleteSquad(t2));
+                            const clickable =
+                              !isBye && m.home && m.away && !squadsBlocked;
+                            return (
+                              <div
+                                key={m.id}
+                                onClick={() => {
+                                  if (clickable) openTournamentResult(ri, mi);
+                                }}
+                                style={{
+                                  background: "#15110a",
+                                  border: `1px solid ${m.winner ? "#27ae60" : "#2e2615"}`,
+                                  borderRadius: 10,
+                                  padding: "8px 10px",
+                                  cursor: clickable ? "pointer" : "default",
+                                  opacity: squadsBlocked && !m.played ? 0.6 : 1,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    marginBottom: 4,
+                                    opacity:
+                                      m.winner && m.winner !== m.home
+                                        ? 0.45
+                                        : 1,
+                                  }}
+                                >
+                                  <Crest emoji={t1?.crestEmoji} size={16} />
+                                  <span
+                                    style={{
+                                      fontSize: 12,
+                                      fontWeight:
+                                        m.winner === m.home ? 700 : 500,
+                                      flex: 1,
+                                      whiteSpace: "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                    }}
+                                  >
+                                    {m.home || "BYE"}
+                                  </span>
+                                  {m.played && (
+                                    <span
+                                      style={{
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        color: "#f0c040",
+                                      }}
+                                    >
+                                      {m.homeGoals}
+                                    </span>
+                                  )}
+                                </div>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    opacity:
+                                      m.winner && m.winner !== m.away
+                                        ? 0.45
+                                        : 1,
+                                  }}
+                                >
+                                  <Crest emoji={t2?.crestEmoji} size={16} />
+                                  <span
+                                    style={{
+                                      fontSize: 12,
+                                      fontWeight:
+                                        m.winner === m.away ? 700 : 500,
+                                      flex: 1,
+                                      whiteSpace: "nowrap",
+                                      overflow: "hidden",
+                                      textOverflow: "ellipsis",
+                                    }}
+                                  >
+                                    {m.away || (isBye ? "" : "?")}
+                                  </span>
+                                  {m.played && (
+                                    <span
+                                      style={{
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        color: "#f0c040",
+                                      }}
+                                    >
+                                      {m.awayGoals}
+                                    </span>
+                                  )}
+                                </div>
+                                {isBye && (
+                                  <div
+                                    style={{
+                                      fontSize: 10,
+                                      color: "#8a7a5a",
+                                      textAlign: "center",
+                                      marginTop: 4,
+                                    }}
+                                  >
+                                    bye
+                                  </div>
+                                )}
+                                {squadsBlocked && !m.played && (
+                                  <div
+                                    style={{
+                                      fontSize: 9,
+                                      color: "#f0c040",
+                                      textAlign: "center",
+                                      marginTop: 4,
+                                    }}
+                                  >
+                                    🔒
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+                    {isAdmin && (
+                      <button
+                        onClick={drawTournament}
+                        style={{
+                          ...btn("transparent"),
+                          border: "1px solid #c0392b",
+                          color: "#c0392b",
+                          marginTop: 16,
+                          fontSize: 12,
+                          padding: "9px",
+                        }}
+                      >
+                        🔄 Volver a sortear (reinicia el torneo)
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+          </div>
+        )}
+      </div>
+
+      {/* ── Bottom navigation ── */}
       {started && (
         <div
           style={{
@@ -2348,30 +6176,1749 @@ export default function FifaLiga() {
         </div>
       )}
 
-<Toast toast={toast} started={started} />
+      {/* ── Toast ── */}
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: started ? 92 : 20,
+            left: 16,
+            right: 16,
+            zIndex: 300,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              background: toast.type === "success" ? "#1a5f3a" : "#5a1a1a",
+              border: `1px solid ${toast.type === "success" ? "#27ae60" : "#c0392b"}`,
+              borderRadius: 10,
+              padding: "10px 18px",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              maxWidth: 380,
+              textAlign: "center",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+            }}
+          >
+            {toast.type === "success" ? "✅ " : "⚠️ "}
+            {toast.text}
+          </div>
+        </div>
+      )}
 
-      {/* ── Bid Modal<BidModal bidModal={bidModal} bids={bids} myTeamName={myTeamName} getAvailableBudget={getAvailableBudget} bidAmountStr={bidAmountStr} setBidAmountStr={setBidAmountStr} setBidModal={setBidModal} cancelBid={cancelBid} confirmBid={confirmBid} />
+      {/* ── Bid Modal (simplified) ── */}
+      {bidModal &&
+        (() => {
+          const player = bidModal;
+          const myBid = bids[player.marketId]?.[myTeamName] || 0;
+          const totalBids = Object.keys(bids[player.marketId] || {}).length;
+          const available = getAvailableBudget(myTeamName, player.marketId);
+          const amount = parseFloat(bidAmountStr) || 0;
+          const quickAmounts = [
+            player.baseValue,
+            Math.round(player.baseValue * 1.5 * 10) / 10,
+            Math.round(player.baseValue * 2 * 10) / 10,
+          ];
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.8)",
+                zIndex: 280,
+                display: "flex",
+                alignItems: "flex-end",
+              }}
+              onClick={() => setBidModal(null)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "#15110a",
+                  borderTop: "1px solid #2e2615",
+                  borderRadius: "20px 20px 0 0",
+                  width: "100%",
+                  maxWidth: 600,
+                  margin: "0 auto",
+                  padding: "10px 18px 28px",
+                  maxHeight: "85vh",
+                  overflowY: "auto",
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 4,
+                    background: "#2e2615",
+                    borderRadius: 2,
+                    margin: "6px auto 16px",
+                  }}
+                />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 16,
+                  }}
+                >
+                  <div
+                    style={{
+                      background: ratingColor(player.overall),
+                      borderRadius: 10,
+                      minWidth: 52,
+                      height: 52,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 800,
+                      fontSize: 21,
+                      color: "#000",
+                    }}
+                  >
+                    {player.overall}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginBottom: 3,
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: posColor(player.pos),
+                          color: "#fff",
+                          borderRadius: 4,
+                          padding: "2px 6px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {player.pos}
+                      </span>
+                      <span style={{ fontWeight: 700, fontSize: 16 }}>
+                        {player.name}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: "#8a7a5a" }}>
+                      {player.nat} · {player.club}
+                    </div>
+                  </div>
+                </div>
 
-      {/* ── Result Modal ── */}<ResultModal pendingResult={pendingResult} teams={teams} allPlayersOf={allPlayersOf} fixtures={fixtures} homeGoals={homeGoals} setHG={setHG} awayGoals={awayGoals} setAG={setAG} matchEvents={matchEvents} setMvp={setMvp} addScorer={addScorer} removeScorer={removeScorer} addAssist={addAssist} removeAssist={removeAssist} saveResult={saveResult} setPR={setPR} />
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 14,
+                    fontSize: 13,
+                    marginBottom: 18,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <span style={{ color: "#8a7a5a" }}>
+                    👥 {totalBids}{" "}
+                    {totalBids === 1 ? "puja activa" : "pujas activas"}
+                  </span>
+                  <span style={{ color: "#27ae60" }}>
+                    💰 Disponible: <strong>{fmtM(available + myBid)}</strong>
+                  </span>
+                </div>
 
-      {/* ── Tournament Result Modal ── */}<TournamentResultModal tournamentResultModal={tournamentResultModal} tournamentBracket={tournamentBracket} tHomeGoals={tHomeGoals} setTHomeGoals={setTHomeGoals} tAwayGoals={tAwayGoals} setTAwayGoals={setTAwayGoals} teams={teams} saveTournamentResult={saveTournamentResult} setTournamentResultModal={setTournamentResultModal} />
+                <div
+                  style={{
+                    color: "#c9b88a",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    marginBottom: 8,
+                  }}
+                >
+                  Tu puja (mín. {fmtM(player.baseValue)})
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 12,
+                  }}
+                >
+                  <button
+                    onClick={() =>
+                      setBidAmountStr(
+                        String(
+                          Math.max(
+                            player.baseValue,
+                            Math.round((amount - 1) * 10) / 10,
+                          ),
+                        ),
+                      )
+                    }
+                    style={{
+                      background: "#2e2615",
+                      border: "none",
+                      color: "#fff",
+                      borderRadius: 10,
+                      width: 40,
+                      height: 40,
+                      fontSize: 18,
+                      cursor: "pointer",
+                    }}
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={bidAmountStr}
+                    onChange={(e) => setBidAmountStr(e.target.value)}
+                    style={{
+                      ...input,
+                      textAlign: "center",
+                      fontSize: 22,
+                      fontWeight: 800,
+                      color: "#f0c040",
+                      flex: 1,
+                    }}
+                  />
+                  <button
+                    onClick={() =>
+                      setBidAmountStr(
+                        String(Math.round((amount + 1) * 10) / 10),
+                      )
+                    }
+                    style={{
+                      background: "#2e2615",
+                      border: "none",
+                      color: "#fff",
+                      borderRadius: 10,
+                      width: 40,
+                      height: 40,
+                      fontSize: 18,
+                      cursor: "pointer",
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
 
-      {/* ── Swap Modal ── */}<SwapModal swapModal={swapModal} teams={teams} allPlayersOf={allPlayersOf} swapPlayer={swapPlayer} setSwapModal={setSwapModal} />
+                <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                  {quickAmounts.map((qa, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setBidAmountStr(String(qa))}
+                      style={{
+                        flex: 1,
+                        background: "#100d08",
+                        border: "1px solid #2e2615",
+                        color: "#c9b88a",
+                        borderRadius: 8,
+                        padding: "8px 4px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {fmtM(qa)}
+                    </button>
+                  ))}
+                </div>
 
-      {/* ── Clause paid modal ── */}<ClausePaidModal view={view} myTeamName={myTeamName} clauseAlerts={clauseAlerts} setClauseAlerts={setClauseAlerts} save={save} />
+                {myBid > 0 && (
+                  <button
+                    onClick={() => cancelBid(player.marketId)}
+                    style={{
+                      ...btn("transparent"),
+                      border: "1px solid #c0392b",
+                      color: "#c0392b",
+                      marginBottom: 10,
+                    }}
+                  >
+                    Cancelar mi puja actual ({fmtM(myBid)})
+                  </button>
+                )}
+                <button
+                  onClick={confirmBid}
+                  style={btn("linear-gradient(135deg,#c9a227,#e8c252)")}
+                >
+                  {myBid > 0 ? "Actualizar puja" : "Confirmar puja"}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
-      {/* ── Player Pick Swap Modal<PlayerPickSwapModal playerPickSwapModal={playerPickSwapModal} teams={teams} allPlayersOf={allPlayersOf} resolvePlayerPickSwap={resolvePlayerPickSwap} setPlayerPickSwapModal={setPlayerPickSwapModal} />
+      {/* ── Result Modal ── */}
+      {pendingResult !== null && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.82)",
+            zIndex: 200,
+            display: "flex",
+            alignItems: "flex-end",
+          }}
+          onClick={() => setPR(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#15110a",
+              borderTop: "1px solid #2e2615",
+              borderRadius: "20px 20px 0 0",
+              width: "100%",
+              maxWidth: 600,
+              margin: "0 auto",
+              padding: "10px 18px 28px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 4,
+                background: "#2e2615",
+                borderRadius: 2,
+                margin: "6px auto 16px",
+              }}
+            />
+
+            {/* Marcador */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 24,
+              }}
+            >
+              {[
+                {
+                  name: fixtures[pendingResult]?.home,
+                  val: homeGoals,
+                  set: setHG,
+                  isHome: true,
+                },
+                {
+                  name: fixtures[pendingResult]?.away,
+                  val: awayGoals,
+                  set: setAG,
+                  isHome: false,
+                },
+              ].map(({ name, val, set, isHome }, i) => {
+                const hg = parseInt(homeGoals) || 0;
+                const ag = parseInt(awayGoals) || 0;
+                const isWinning = isHome ? hg > ag : ag > hg;
+                const isDraw =
+                  hg === ag && homeGoals !== "" && awayGoals !== "";
+                return (
+                  <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <Crest
+                        emoji={teams.find((t) => t.name === name)?.crestEmoji}
+                        size={20}
+                      />
+                      <span
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 13,
+                          color: isWinning
+                            ? "#c9a227"
+                            : isDraw
+                              ? "#f0e6d2"
+                              : "#8a7a5a",
+                        }}
+                      >
+                        {name}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <button
+                        onClick={() =>
+                          set(String(Math.max(0, (parseInt(val) || 0) - 1)))
+                        }
+                        style={{
+                          background: "#2e2615",
+                          border: "none",
+                          color: "#fff",
+                          borderRadius: 8,
+                          width: 34,
+                          height: 34,
+                          fontSize: 18,
+                          cursor: "pointer",
+                          fontWeight: 700,
+                        }}
+                      >
+                        −
+                      </button>
+                      <div
+                        style={{
+                          width: 56,
+                          height: 56,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          background: isWinning
+                            ? "rgba(201,162,39,0.15)"
+                            : "#100d08",
+                          border: `2px solid ${isWinning ? "#c9a227" : isDraw ? "#2e2615" : "#2e2615"}`,
+                          borderRadius: 12,
+                          fontWeight: 800,
+                          fontSize: 28,
+                          color: isWinning ? "#c9a227" : "#f0e6d2",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        {val === "" ? "-" : val}
+                      </div>
+                      <button
+                        onClick={() => set(String((parseInt(val) || 0) + 1))}
+                        style={{
+                          background: "#2e2615",
+                          border: "none",
+                          color: "#fff",
+                          borderRadius: 8,
+                          width: 34,
+                          height: 34,
+                          fontSize: 18,
+                          cursor: "pointer",
+                          fontWeight: 700,
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Sección Goleadores */}
+            <div
+              style={{
+                background: "rgba(192,57,43,0.08)",
+                border: "1px solid rgba(192,57,43,0.3)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#c0392b",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  marginBottom: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                ⚽ Goleadores
+              </div>
+              <EventPickerStyled
+                teams={[
+                  fixtures[pendingResult]?.home,
+                  fixtures[pendingResult]?.away,
+                ]}
+                allTeams={teams}
+                events={matchEvents.scorers}
+                onAdd={addScorer}
+                onRemove={removeScorer}
+                accentColor="#c0392b"
+              />
+            </div>
+
+            {/* Sección Asistentes */}
+            <div
+              style={{
+                background: "rgba(39,174,96,0.08)",
+                border: "1px solid rgba(39,174,96,0.3)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                marginBottom: 12,
+              }}
+            >
+              <div
+                style={{
+                  color: "#27ae60",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  marginBottom: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                🅰️ Asistentes{" "}
+                <span
+                  style={{ color: "#5a5040", fontWeight: 400, fontSize: 11 }}
+                >
+                  (opcional)
+                </span>
+              </div>
+              <EventPickerStyled
+                teams={[
+                  fixtures[pendingResult]?.home,
+                  fixtures[pendingResult]?.away,
+                ]}
+                allTeams={teams}
+                events={matchEvents.assists}
+                onAdd={addAssist}
+                onRemove={removeAssist}
+                accentColor="#27ae60"
+              />
+            </div>
+
+            {/* Sección MVP */}
+            <div
+              style={{
+                background: "rgba(240,192,64,0.08)",
+                border: "1px solid rgba(240,192,64,0.3)",
+                borderRadius: 12,
+                padding: "12px 14px",
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  color: "#f0c040",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  marginBottom: 10,
+                }}
+              >
+                🏅 Hombre del partido
+              </div>
+              {[
+                fixtures[pendingResult]?.home,
+                fixtures[pendingResult]?.away,
+              ].map((teamName) => {
+                const t = teams.find((x) => x.name === teamName);
+                const allP = [...allPlayersOf(t)].sort(
+                  (a, b) =>
+                    (b.goals || 0) +
+                    (b.assists || 0) +
+                    (b.mvps || 0) -
+                    (a.goals || 0) -
+                    (a.assists || 0) -
+                    (a.mvps || 0),
+                );
+                return (
+                  <div key={teamName} style={{ marginBottom: 10 }}>
+                    <div
+                      style={{
+                        color: "#8a7a5a",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        marginBottom: 6,
+                      }}
+                    >
+                      {teamName}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                      {allP.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => setMvp(p.id)}
+                          style={{
+                            background:
+                              matchEvents.mvp === p.id ? "#f0c040" : "#100d08",
+                            color:
+                              matchEvents.mvp === p.id ? "#0a0805" : "#c9b88a",
+                            border: `1px solid ${matchEvents.mvp === p.id ? "#f0c040" : "#2e2615"}`,
+                            borderRadius: 8,
+                            padding: "5px 10px",
+                            cursor: "pointer",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <span
+                            style={{
+                              background: posColor(p.pos),
+                              borderRadius: 3,
+                              padding: "1px 4px",
+                              fontSize: 9,
+                              color: "#fff",
+                              fontWeight: 800,
+                            }}
+                          >
+                            {p.pos}
+                          </span>
+                          {p.name.split(" ").slice(-1)[0]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Resumen antes de guardar */}
+            {homeGoals !== "" && awayGoals !== "" && (
+              <div
+                style={{
+                  background: "#100d08",
+                  border: "1px solid #2e2615",
+                  borderRadius: 12,
+                  padding: "12px 14px",
+                  marginBottom: 16,
+                }}
+              >
+                <div
+                  style={{
+                    color: "#8a7a5a",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    marginBottom: 8,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  Resumen
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 10,
+                  }}
+                >
+                  <span
+                    style={{
+                      flex: 1,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color:
+                        parseInt(homeGoals) > parseInt(awayGoals)
+                          ? "#c9a227"
+                          : "#8a7a5a",
+                    }}
+                  >
+                    {fixtures[pendingResult]?.home}
+                  </span>
+                  <span
+                    style={{
+                      background: "#2e2615",
+                      borderRadius: 8,
+                      padding: "4px 12px",
+                      fontWeight: 800,
+                      fontSize: 18,
+                      color: "#f0c040",
+                    }}
+                  >
+                    {homeGoals}-{awayGoals}
+                  </span>
+                  <span
+                    style={{
+                      flex: 1,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      textAlign: "right",
+                      color:
+                        parseInt(awayGoals) > parseInt(homeGoals)
+                          ? "#c9a227"
+                          : "#8a7a5a",
+                    }}
+                  >
+                    {fixtures[pendingResult]?.away}
+                  </span>
+                </div>
+                {(() => {
+                  const home = fixtures[pendingResult]?.home;
+                  const away = fixtures[pendingResult]?.away;
+                  const homeScorers = matchEvents.scorers.filter(
+                    (s) => s.team === home,
+                  );
+                  const awayScorers = matchEvents.scorers.filter(
+                    (s) => s.team === away,
+                  );
+                  const homeTeam = teams.find((x) => x.name === home);
+                  const awayTeam = teams.find((x) => x.name === away);
+                  const getPlayer = (team, id) =>
+                    allPlayersOf(team).find((p) => p.id === id);
+                  if (homeScorers.length === 0 && awayScorers.length === 0)
+                    return null;
+                  return (
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      {/* Local — izquierda */}
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                          gap: 3,
+                        }}
+                      >
+                        {homeScorers.map((s, i) => (
+                          <span
+                            key={i}
+                            style={{ fontSize: 11, color: "#f0e6d2" }}
+                          >
+                            ⚽ {getPlayer(homeTeam, s.playerId)?.name || "?"}
+                          </span>
+                        ))}
+                      </div>
+                      {/* Visitante — derecha */}
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-end",
+                          gap: 3,
+                        }}
+                      >
+                        {awayScorers.map((s, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              fontSize: 11,
+                              color: "#f0e6d2",
+                              textAlign: "right",
+                            }}
+                          >
+                            {getPlayer(awayTeam, s.playerId)?.name || "?"} ⚽
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+                {matchEvents.mvp && (
+                  <div style={{ marginTop: 6 }}>
+                    <span
+                      style={{
+                        background: "rgba(240,192,64,0.15)",
+                        border: "1px solid #f0c040",
+                        borderRadius: 6,
+                        padding: "2px 8px",
+                        fontSize: 11,
+                        color: "#f0c040",
+                        fontWeight: 700,
+                      }}
+                    >
+                      🏅{" "}
+                      {(() => {
+                        for (const t of teams) {
+                          const p = allPlayersOf(t).find(
+                            (pp) => pp.id === matchEvents.mvp,
+                          );
+                          if (p) return p.name;
+                        }
+                        return "?";
+                      })()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setPR(null)}
+                style={{
+                  ...btn("transparent"),
+                  border: "1px solid #2e2615",
+                  color: "#8a7a5a",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveResult}
+                style={btn("linear-gradient(135deg,#c9a227,#e8c252)")}
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tournament Result Modal ── */}
+      {tournamentResultModal &&
+        (() => {
+          const match =
+            tournamentBracket[tournamentResultModal.round][
+              tournamentResultModal.matchIndex
+            ];
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.82)",
+                zIndex: 200,
+                display: "flex",
+                alignItems: "flex-end",
+              }}
+              onClick={() => setTournamentResultModal(null)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "#15110a",
+                  borderTop: "1px solid #2e2615",
+                  borderRadius: "20px 20px 0 0",
+                  width: "100%",
+                  maxWidth: 600,
+                  margin: "0 auto",
+                  padding: "10px 18px 28px",
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 4,
+                    background: "#2e2615",
+                    borderRadius: 2,
+                    margin: "6px auto 16px",
+                  }}
+                />
+                <h3
+                  style={{
+                    color: "#fff",
+                    textAlign: "center",
+                    fontWeight: 700,
+                    marginBottom: 6,
+                    fontSize: 16,
+                  }}
+                >
+                  Resultado del torneo
+                </h3>
+                <p
+                  style={{
+                    color: "#8a7a5a",
+                    fontSize: 11,
+                    textAlign: "center",
+                    marginBottom: 16,
+                  }}
+                >
+                  No afecta presupuesto ni estadísticas. No puede haber empate.
+                </p>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 20,
+                  }}
+                >
+                  {[
+                    {
+                      label: "LOCAL",
+                      name: match.home,
+                      val: tHomeGoals,
+                      set: setTHomeGoals,
+                    },
+                    {
+                      label: "VISITANTE",
+                      name: match.away,
+                      val: tAwayGoals,
+                      set: setTAwayGoals,
+                    },
+                  ].map(({ label, name, val, set }, i) => (
+                    <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                      <div
+                        style={{
+                          color: "#8a7a5a",
+                          fontSize: 11,
+                          marginBottom: 5,
+                        }}
+                      >
+                        {label}
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          marginBottom: 10,
+                        }}
+                      >
+                        <Crest
+                          emoji={teams.find((t) => t.name === name)?.crestEmoji}
+                          size={20}
+                        />
+                        <span style={{ fontWeight: 700, fontSize: 13 }}>
+                          {name}
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        value={val}
+                        onChange={(e) => set(e.target.value)}
+                        style={{
+                          width: 64,
+                          textAlign: "center",
+                          background: "#0a0805",
+                          border: "1px solid #2e2615",
+                          borderRadius: 10,
+                          padding: 12,
+                          color: "#f0c040",
+                          fontWeight: 800,
+                          fontSize: 24,
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setTournamentResultModal(null)}
+                    style={{
+                      ...btn("transparent"),
+                      border: "1px solid #2e2615",
+                      color: "#8a7a5a",
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={saveTournamentResult}
+                    style={btn("linear-gradient(135deg,#c9a227,#e8c252)")}
+                  >
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* ── Swap Modal ── */}
+      {swapModal &&
+        (() => {
+          const t = teams.find((x) => x.name === swapModal.teamName);
+          const allP = allPlayersOf(t);
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.82)",
+                zIndex: 230,
+                display: "flex",
+                alignItems: "flex-end",
+              }}
+            >
+              <div
+                style={{
+                  background: "#15110a",
+                  borderTop: "1px solid #2e2615",
+                  borderRadius: "20px 20px 0 0",
+                  width: "100%",
+                  maxWidth: 600,
+                  margin: "0 auto",
+                  padding: "20px 18px 28px",
+                  maxHeight: "85vh",
+                  overflowY: "auto",
+                }}
+              >
+                <h3
+                  style={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    marginBottom: 6,
+                    fontSize: 16,
+                  }}
+                >
+                  Plantilla llena
+                </h3>
+                <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 16 }}>
+                  <strong style={{ color: "#f0c040" }}>
+                    {swapModal.newPlayer.name}
+                  </strong>{" "}
+                  fue fichado pero la plantilla está al límite ({MAX_SQUAD}).
+                  Elige a quién liberar:
+                </p>
+                {allP
+                  .filter((p) => p.id !== t?.squad?.star?.id)
+                  .map((p, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "10px 0",
+                        borderBottom: "1px solid #241e10",
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: posColor(p.pos || p.position),
+                          color: "#fff",
+                          borderRadius: 4,
+                          padding: "2px 6px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          minWidth: 36,
+                          textAlign: "center",
+                        }}
+                      >
+                        {p.pos || p.position}
+                      </span>
+                      <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>
+                        {p.name}
+                      </span>
+                      <span style={{ color: "#8a7a5a", fontSize: 12 }}>
+                        {p.overall}
+                      </span>
+                      <button
+                        onClick={() =>
+                          swapPlayer(
+                            swapModal.teamName,
+                            p.id,
+                            swapModal.newPlayer,
+                            swapModal.amount,
+                          )
+                        }
+                        style={{
+                          background: "#c0392b",
+                          border: "none",
+                          color: "#fff",
+                          borderRadius: 7,
+                          padding: "6px 12px",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        Fichar
+                      </button>
+                    </div>
+                  ))}
+                <button
+                  onClick={() => setSwapModal(null)}
+                  style={{
+                    ...btn("transparent"),
+                    border: "1px solid #2e2615",
+                    color: "#8a7a5a",
+                    marginTop: 14,
+                  }}
+                >
+                  Cancelar fichaje
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+      {lineupSlotModal &&
+        (() => {
+          const t = teams.find((x) => x.name === lineupSlotModal.teamName);
+          if (!t) return null;
+          const allP = allPlayersOf(t);
+          const lineup = t.lineup || {
+            formation: FORMATION_NAMES[0],
+            slots: {},
+          };
+          const currentPlayerId = lineup.slots[lineupSlotModal.slotId];
+          const slotInfo = (FORMATIONS[lineup.formation] || []).find(
+            (s) => s.id === lineupSlotModal.slotId,
+          );
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.82)",
+                zIndex: 230,
+                display: "flex",
+                alignItems: "flex-end",
+              }}
+              onClick={() => setLineupSlotModal(null)}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: "#15110a",
+                  borderTop: "1px solid #2e2615",
+                  borderRadius: "20px 20px 0 0",
+                  width: "100%",
+                  maxWidth: 600,
+                  margin: "0 auto",
+                  padding: "10px 18px 28px",
+                  maxHeight: "75vh",
+                  overflowY: "auto",
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 4,
+                    background: "#2e2615",
+                    borderRadius: 2,
+                    margin: "6px auto 16px",
+                  }}
+                />
+                <h3
+                  style={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    marginBottom: 4,
+                    fontSize: 16,
+                  }}
+                >
+                  Elegir jugador — {slotInfo?.label}
+                </h3>
+                <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 14 }}>
+                  Toca un jugador para colocarlo en esta posición.
+                </p>
+                {currentPlayerId && (
+                  <button
+                    onClick={() =>
+                      clearSlot(
+                        lineupSlotModal.teamName,
+                        lineupSlotModal.slotId,
+                      )
+                    }
+                    style={{
+                      ...btn("transparent"),
+                      border: "1px solid #c0392b",
+                      color: "#c0392b",
+                      marginBottom: 14,
+                    }}
+                  >
+                    Quitar jugador de esta posición
+                  </button>
+                )}
+                {allP.map((p) => {
+                  const isHere = p.id === currentPlayerId;
+                  const isElsewhere =
+                    !isHere && Object.values(lineup.slots).includes(p.id);
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() =>
+                        assignPlayerToSlot(
+                          lineupSlotModal.teamName,
+                          lineupSlotModal.slotId,
+                          p.id,
+                        )
+                      }
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "10px 0",
+                        borderBottom: "1px solid #241e10",
+                        cursor: "pointer",
+                        opacity: isElsewhere ? 0.5 : 1,
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: posColor(p.pos || p.position),
+                          color: "#fff",
+                          borderRadius: 4,
+                          padding: "2px 6px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          minWidth: 36,
+                          textAlign: "center",
+                        }}
+                      >
+                        {p.pos || p.position}
+                      </span>
+                      <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>
+                        {p.name}
+                        {isHere && (
+                          <span style={{ color: "#27ae60", fontSize: 11 }}>
+                            {" "}
+                            (aquí)
+                          </span>
+                        )}
+                        {isElsewhere && (
+                          <span style={{ color: "#f0c040", fontSize: 11 }}>
+                            {" "}
+                            (en otra posición)
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        style={{
+                          fontWeight: 800,
+                          color: ratingColor(p.overall),
+                        }}
+                      >
+                        {p.overall}
+                      </span>
+                    </div>
+                  );
+                })}
+                <button
+                  onClick={() => setLineupSlotModal(null)}
+                  style={{
+                    ...btn("transparent"),
+                    border: "1px solid #2e2615",
+                    color: "#8a7a5a",
+                    marginTop: 14,
+                  }}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* ── Clause paid modal ── */}
+      {view === VIEWS.SQUADS &&
+        myTeamName &&
+        (() => {
+          const myAlerts = clauseAlerts.filter(
+            (a) => a.teamName === myTeamName,
+          );
+          if (myAlerts.length === 0) return null;
+          const dismissAlerts = () => {
+            const newClauseAlerts = clauseAlerts.filter(
+              (a) => a.teamName !== myTeamName,
+            );
+            setClauseAlerts(newClauseAlerts);
+            save({ clauseAlerts: newClauseAlerts });
+          };
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.85)",
+                zIndex: 290,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 20,
+              }}
+            >
+              <div
+                style={{
+                  background: "#15110a",
+                  border: "1px solid #c0392b",
+                  borderRadius: 20,
+                  padding: 24,
+                  maxWidth: 340,
+                  width: "100%",
+                  textAlign: "center",
+                }}
+              >
+                <div style={{ fontSize: 36, marginBottom: 10 }}>😱</div>
+                <h3
+                  style={{
+                    color: "#c0392b",
+                    fontWeight: 800,
+                    fontSize: 18,
+                    marginBottom: 16,
+                  }}
+                >
+                  ¡Te han pagado una cláusula!
+                </h3>
+                {myAlerts.map((a, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: "#100d08",
+                      border: "1px solid #2e2615",
+                      borderRadius: 12,
+                      padding: "12px 16px",
+                      marginBottom: 10,
+                      textAlign: "left",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        fontSize: 15,
+                        color: "#f0e6d2",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {a.playerName}
+                    </div>
+                    <div style={{ fontSize: 13, color: "#8a7a5a" }}>
+                      <span style={{ color: "#e8c252", fontWeight: 700 }}>
+                        {a.buyerTeam}
+                      </span>{" "}
+                      ha pagado su cláusula por{" "}
+                      <span style={{ color: "#c0392b", fontWeight: 700 }}>
+                        {fmtM(a.amount)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                <p
+                  style={{
+                    color: "#8a7a5a",
+                    fontSize: 12,
+                    marginBottom: 16,
+                    marginTop: 8,
+                  }}
+                >
+                  El dinero ya ha sido ingresado en tu cuenta.
+                </p>
+                <button
+                  onClick={dismissAlerts}
+                  style={{
+                    ...btn("linear-gradient(135deg,#c9a227,#8a6f1a)"),
+                    fontSize: 14,
+                  }}
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+
+      {/* ── Player Pick Swap Modal (champion's squad is full) ── */}
+      {playerPickSwapModal &&
+        (() => {
+          const t = teams.find(
+            (x) => x.name === playerPickSwapModal.championTeamName,
+          );
+          const allP = allPlayersOf(t);
+          return (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(0,0,0,0.82)",
+                zIndex: 230,
+                display: "flex",
+                alignItems: "flex-end",
+              }}
+            >
+              <div
+                style={{
+                  background: "#15110a",
+                  borderTop: "1px solid #2e2615",
+                  borderRadius: "20px 20px 0 0",
+                  width: "100%",
+                  maxWidth: 600,
+                  margin: "0 auto",
+                  padding: "20px 18px 28px",
+                  maxHeight: "85vh",
+                  overflowY: "auto",
+                }}
+              >
+                <h3
+                  style={{
+                    color: "#fff",
+                    fontWeight: 700,
+                    marginBottom: 6,
+                    fontSize: 16,
+                  }}
+                >
+                  Plantilla llena
+                </h3>
+                <p style={{ color: "#8a7a5a", fontSize: 13, marginBottom: 16 }}>
+                  Para añadir a{" "}
+                  <strong style={{ color: "#f0c040" }}>
+                    {playerPickSwapModal.newPlayer.name}
+                  </strong>{" "}
+                  ({playerPickSwapModal.newPlayer.overall}) tu plantilla está al
+                  límite ({MAX_SQUAD}). Elige a quién descartar:
+                </p>
+                {allP
+                  .filter((p) => p.id !== t?.squad?.star?.id)
+                  .map((p, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "10px 0",
+                        borderBottom: "1px solid #241e10",
+                      }}
+                    >
+                      <span
+                        style={{
+                          background: posColor(p.pos || p.position),
+                          color: "#fff",
+                          borderRadius: 4,
+                          padding: "2px 6px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          minWidth: 36,
+                          textAlign: "center",
+                        }}
+                      >
+                        {p.pos || p.position}
+                      </span>
+                      <span style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>
+                        {p.name}
+                      </span>
+                      <span style={{ color: "#8a7a5a", fontSize: 12 }}>
+                        {p.overall}
+                      </span>
+                      <button
+                        onClick={() => resolvePlayerPickSwap(p.id)}
+                        style={{
+                          background: "#c0392b",
+                          border: "none",
+                          color: "#fff",
+                          borderRadius: 7,
+                          padding: "6px 12px",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        Descartar y fichar
+                      </button>
+                    </div>
+                  ))}
+                <button
+                  onClick={() => setPlayerPickSwapModal(null)}
+                  style={{
+                    ...btn("transparent"),
+                    border: "1px solid #2e2615",
+                    color: "#8a7a5a",
+                    marginTop: 14,
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
       {/* ── Sell Modal ── */}
-<OfferModal offerModal={offerModal} offerAmountStr={offerAmountStr} setOfferAmountStr={setOfferAmountStr} setOfferModal={setOfferModal} submitOffer={submitOffer} />
+      {/* ── Offer Modal ── */}
+      {offerModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            zIndex: 240,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: "#15110a",
+              border: "1px solid #2e2615",
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 360,
+              width: "100%",
+            }}
+          >
+            <h3
+              style={{
+                color: "#fff",
+                fontWeight: 700,
+                marginBottom: 12,
+                fontSize: 16,
+              }}
+            >
+              Hacer oferta
+            </h3>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                marginBottom: 14,
+              }}
+            >
+              <span
+                style={{
+                  background: posColor(offerModal.player.pos),
+                  color: "#fff",
+                  borderRadius: 4,
+                  padding: "2px 6px",
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                {offerModal.player.pos}
+              </span>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>
+                {offerModal.player.name}
+              </span>
+              <span
+                style={{
+                  color: ratingColor(offerModal.player.overall),
+                  fontWeight: 800,
+                }}
+              >
+                {offerModal.player.overall}
+              </span>
+            </div>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 8 }}>
+              De: <strong>{offerModal.teamName}</strong>. El precio es libre, el
+              equipo rival puede aceptarla o rechazarla.
+            </p>
+            <input
+              type="number"
+              inputMode="decimal"
+              min="0.5"
+              step="0.5"
+              placeholder="Importe en M€"
+              value={offerAmountStr}
+              onChange={(e) => setOfferAmountStr(e.target.value)}
+              style={{ ...input, marginBottom: 16, fontSize: 15 }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setOfferModal(null)}
+                style={{
+                  ...btn("transparent"),
+                  border: "1px solid #2e2615",
+                  color: "#8a7a5a",
+                }}
+              >
+                Cancelar
+              </button>
+              <button onClick={submitOffer} style={btn()}>
+                Enviar oferta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* ── Discard Confirm ── */}<DiscardConfirmModal discardConfirm={discardConfirm} setDiscardConfirm={setDiscardConfirm} discardPlayer={discardPlayer} />
+      {/* ── Discard Confirm ── */}
+      {discardConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            zIndex: 240,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: "#15110a",
+              border: "1px solid #2e2615",
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 340,
+              textAlign: "center",
+            }}
+          >
+            <p style={{ marginBottom: 8, fontWeight: 600, fontSize: 15 }}>
+              ¿Descartar a{" "}
+              <strong style={{ color: "#f0c040" }}>
+                {discardConfirm.player.name}
+              </strong>
+              ?
+            </p>
+            <p
+              style={{
+                color: "#27ae60",
+                fontWeight: 700,
+                fontSize: 18,
+                marginBottom: 8,
+              }}
+            >
+              Recibirás{" "}
+              {fmtM(
+                ((discardConfirm.player.clauseValue ??
+                  clauseBase(
+                    discardConfirm.player.overall,
+                    discardConfirm.player.pos,
+                  )) +
+                  (discardConfirm.player.clauseInvested || 0) * 2) /
+                  2,
+              )}
+            </p>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 20 }}>
+              Mitad de su valor de cláusula actual.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setDiscardConfirm(null)}
+                style={{
+                  ...btn("transparent"),
+                  border: "1px solid #2e2615",
+                  color: "#8a7a5a",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  discardPlayer(discardConfirm.teamName, discardConfirm.player);
+                  setDiscardConfirm(null);
+                }}
+                style={btn("#f0c040")}
+              >
+                Descartar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* ── Clause Confirm ── */}<ClauseConfirmModal clauseConfirm={clauseConfirm} setClauseConfirm={setClauseConfirm} payClause={payClause} />
-
-      {/* ── Legend Buy Confirm Modal ── */}<LegendBuyConfirmModal legendBuyConfirm={legendBuyConfirm} myTeamName={myTeamName} buyLegend={buyLegend} />
-
-      {/* ── Legend Reveal Modal ── */}      {/* ── Legend Reveal Modal ── */}
+      {/* ── Clause Confirm ── */}
+      {clauseConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            zIndex: 240,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: "#15110a",
+              border: "1px solid #2e2615",
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 340,
+              textAlign: "center",
+            }}
+          >
+            <p style={{ marginBottom: 8, fontWeight: 600, fontSize: 15 }}>
+              ¿Pagar la cláusula de{" "}
+              <strong style={{ color: "#f0c040" }}>
+                {clauseConfirm.player.name}
+              </strong>{" "}
+              ({clauseConfirm.sellerTeam})?
+            </p>
+            <p
+              style={{
+                color: "#c0392b",
+                fontWeight: 700,
+                fontSize: 20,
+                marginBottom: 8,
+              }}
+            >
+              {fmtM(clauseConfirm.clauseTotal)}
+            </p>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 20 }}>
+              El equipo rival no puede negarse.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setClauseConfirm(null)}
+                style={{
+                  ...btn("transparent"),
+                  border: "1px solid #2e2615",
+                  color: "#8a7a5a",
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() =>
+                  payClause(
+                    clauseConfirm.sellerTeam,
+                    clauseConfirm.player,
+                    clauseConfirm.clauseTotal,
+                  )
+                }
+                style={btn("#c0392b")}
+              >
+                Pagar y fichar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Legend Buy Confirm Modal ── */}
+      {legendBuyConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.8)",
+            zIndex: 240,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            style={{
+              background: "#15110a",
+              border: "1px solid #c0392b",
+              borderRadius: 16,
+              padding: 24,
+              maxWidth: 340,
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 32, marginBottom: 10 }}>🏆</div>
+            <p
+              style={{
+                marginBottom: 6,
+                fontWeight: 700,
+                fontSize: 16,
+                color: "#fff",
+              }}
+            >
+              ¡Leyenda disponible!
+            </p>
+            <p style={{ color: "#8a7a5a", fontSize: 12, marginBottom: 20 }}>
+              El jugador se unirá a <strong>{myTeamName}</strong>. Esta
+              operación no se puede deshacer.
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => buyLegend(legendBuyConfirm)}
+                style={btn("#c0392b")}
+              >
+                Confirmar compra
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Legend Reveal Modal ── */}
       {legendReveal && (
         <LegendRevealModal
           reveal={legendReveal}
