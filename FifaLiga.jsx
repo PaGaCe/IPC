@@ -291,6 +291,7 @@ export default function FifaLiga() {
     if (s.championPrize !== undefined) setChampionPrize(s.championPrize);
     if (s.wrappedAvailable !== undefined)
       setWrappedAvailable(s.wrappedAvailable);
+    if (s.seasonWrap !== undefined) setSeasonWrap(s.seasonWrap);
   };
 
   const loadLeague = useCallback(async (code) => {
