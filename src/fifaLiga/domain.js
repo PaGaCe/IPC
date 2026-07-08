@@ -2,7 +2,7 @@ import {
   SQUAD_POOL,
   DRAFT_STARS,
   MARKET_POOL,
-} from "../../PlayersPool";
+} from "./pools";
 
 export const clubLogos = {
   "Real Madrid": "/clubs/realmadrid.png",
