@@ -121,6 +121,8 @@ export default function FifaLiga() {
     assists: [],
     mvp: null,
   });
+  const [fixturesTab, setFixturesTab] = useState("pending"); // "pending" | "played"
+  const [fixturesTeamFilter, setFixturesTeamFilter] = useState("all");
 
   const [marketDay, setMarketDay] = useState(null);
   const [marketResetAt, setMarketResetAt] = useState(null);
@@ -3616,298 +3618,414 @@ export default function FifaLiga() {
             >
               Partidos
             </h2>
-            {pending.length > 0 && (
-              <div
+
+            {/* Tabs */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <button
+                onClick={() => setFixturesTab("pending")}
+                style={{ flex: 1, ...pill(fixturesTab === "pending") }}
+              >
+                📅 Partidos pendientes ({pending.length})
+              </button>
+              <button
+                onClick={() => setFixturesTab("played")}
+                style={{ flex: 1, ...pill(fixturesTab === "played") }}
+              >
+                ✅ Resultados ({played.length})
+              </button>
+            </div>
+
+            {/* Filtro por equipo */}
+            <div style={{ marginBottom: 14 }}>
+              <select
+                value={fixturesTeamFilter}
+                onChange={(e) => setFixturesTeamFilter(e.target.value)}
                 style={{
-                  color: "#c9b88a",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  marginBottom: 8,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
+                  ...input,
+                  fontSize: 13,
+                  padding: "10px 12px",
+                  background: "#100d08",
+                  border: "1px solid #2e2615",
+                  color: fixturesTeamFilter === "all" ? "#8a7a5a" : "#f0e6d2",
                 }}
               >
-                Pendientes ({pending.length})
-              </div>
-            )}
-            {sortedPending.map((f) => {
-              const idx = fixtures.indexOf(f);
-              const homeTeam = teams.find((t) => t.name === f.home);
-              const awayTeam = teams.find((t) => t.name === f.away);
-              const homeIncomplete = hasIncompleteSquad(homeTeam);
-              const awayIncomplete = hasIncompleteSquad(awayTeam);
-              const blocked = homeIncomplete || awayIncomplete;
-              return (
-                <div key={idx} style={card}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginBottom: 10,
-                    }}
-                  >
-                    <Crest emoji={homeTeam?.crestEmoji} size={24} />
-                    <span style={{ fontWeight: 700, fontSize: 14, flex: 1 }}>
-                      {f.home}
-                    </span>
-                    <span style={{ color: "#8a7a5a", fontSize: 11 }}>vs</span>
-                    <span
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 14,
-                        flex: 1,
-                        textAlign: "right",
-                      }}
-                    >
-                      {f.away}
-                    </span>
-                    <Crest emoji={awayTeam?.crestEmoji} size={24} />
-                  </div>
-                  {blocked && (
-                    <p
-                      style={{
-                        color: "#f0c040",
-                        fontSize: 11,
-                        marginBottom: 8,
-                      }}
-                    >
-                      ⚠️ {homeIncomplete && f.home}
-                      {homeIncomplete && awayIncomplete && " y "}
-                      {awayIncomplete && f.away} no{" "}
-                      {homeIncomplete && awayIncomplete ? "tienen" : "tiene"}{" "}
-                      los {MIN_SQUAD_TO_PLAY} jugadores mínimos para jugar.
-                    </p>
-                  )}
-                  {(() => {
-                    const canEdit =
-                      isAdmin || myTeamName === f.home || myTeamName === f.away;
-                    return (
-                      <button
-                        onClick={() => !blocked && canEdit && openResult(idx)}
-                        disabled={blocked || !canEdit}
+                <option value="all">👥 Todos los equipos</option>
+                {teams.map((t) => (
+                  <option key={t.name} value={t.name}>
+                    {t.name}
+                    {t.name === myTeamName ? " (tú)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* TAB PENDIENTES */}
+            {fixturesTab === "pending" &&
+              (() => {
+                const filtered = sortedPending.filter(
+                  (f) =>
+                    fixturesTeamFilter === "all" ||
+                    f.home === fixturesTeamFilter ||
+                    f.away === fixturesTeamFilter,
+                );
+                return (
+                  <div>
+                    {filtered.length === 0 && (
+                      <p
                         style={{
-                          ...btn(
-                            blocked
-                              ? "#1a2030"
-                              : !canEdit
-                                ? "#1a2030"
-                                : undefined,
-                          ),
-                          color: blocked || !canEdit ? "#4a5a6a" : "#443b03",
-                          cursor:
-                            blocked || !canEdit ? "not-allowed" : "pointer",
+                          color: "#8a7a5a",
+                          fontSize: 13,
+                          textAlign: "center",
+                          marginTop: 20,
                         }}
                       >
-                        {blocked
-                          ? "🔒 Bloqueado"
-                          : !canEdit
-                            ? "🔒 Sin acceso"
-                            : "+ Añadir resultado"}
-                      </button>
-                    );
-                  })()}
-                </div>
-              );
-            })}
-            {pending.length === 0 && (
-              <p
-                style={{ color: "#27ae60", fontWeight: 600, marginBottom: 18 }}
-              >
-                ✅ ¡Todos los partidos jugados!
-              </p>
-            )}
-
-            {played.length > 0 && (
-              <div
-                style={{
-                  color: "#c9b88a",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  margin: "18px 0 8px",
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                }}
-              >
-                Jugados ({played.length})
-              </div>
-            )}
-            {[...played].reverse().map((f) => {
-              const idx = fixtures.indexOf(f);
-              return (
-                <div
-                  key={idx}
-                  style={{
-                    ...card,
-                    cursor:
-                      isAdmin || myTeamName === f.home || myTeamName === f.away
-                        ? "pointer"
-                        : "default",
-                  }}
-                  onClick={() => {
-                    if (
-                      isAdmin ||
-                      myTeamName === f.home ||
-                      myTeamName === f.away
-                    )
-                      openResult(idx);
-                  }}
-                >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 8 }}
-                  >
-                    <Crest
-                      emoji={teams.find((t) => t.name === f.home)?.crestEmoji}
-                      size={22}
-                    />
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        fontSize: 13,
-                        flex: 1,
-                        color:
-                          f.homeGoals > f.awayGoals ? "#27ae60" : "#e8eaf0",
-                      }}
-                    >
-                      {f.home}
-                    </span>
-                    <div
-                      style={{
-                        background: "#0a0805",
-                        border: "1px solid #2e2615",
-                        borderRadius: 6,
-                        padding: "3px 10px",
-                        fontWeight: 800,
-                        fontSize: 14,
-                        color: "#f0c040",
-                      }}
-                    >
-                      {f.homeGoals}-{f.awayGoals}
-                    </div>
-                    <span
-                      style={{
-                        fontWeight: 600,
-                        fontSize: 13,
-                        flex: 1,
-                        textAlign: "right",
-                        color:
-                          f.awayGoals > f.homeGoals ? "#27ae60" : "#e8eaf0",
-                      }}
-                    >
-                      {f.away}
-                    </span>
-                    <Crest
-                      emoji={teams.find((t) => t.name === f.away)?.crestEmoji}
-                      size={22}
-                    />
+                        {fixturesTeamFilter === "all"
+                          ? "✅ ¡Todos los partidos jugados!"
+                          : `No hay partidos pendientes de ${fixturesTeamFilter}.`}
+                      </p>
+                    )}
+                    {filtered.map((f) => {
+                      const idx = fixtures.indexOf(f);
+                      const homeTeam = teams.find((t) => t.name === f.home);
+                      const awayTeam = teams.find((t) => t.name === f.away);
+                      const homeIncomplete = hasIncompleteSquad(homeTeam);
+                      const awayIncomplete = hasIncompleteSquad(awayTeam);
+                      const blocked = homeIncomplete || awayIncomplete;
+                      const canEdit =
+                        isAdmin ||
+                        myTeamName === f.home ||
+                        myTeamName === f.away;
+                      return (
+                        <div key={idx} style={card}>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              marginBottom: 10,
+                            }}
+                          >
+                            <Crest emoji={homeTeam?.crestEmoji} size={24} />
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 14,
+                                flex: 1,
+                                color:
+                                  myTeamName === f.home ? "#e8c252" : "#f0e6d2",
+                              }}
+                            >
+                              {f.home}
+                            </span>
+                            <span
+                              style={{
+                                color: "#8a7a5a",
+                                fontSize: 11,
+                                fontWeight: 600,
+                              }}
+                            >
+                              vs
+                            </span>
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                fontSize: 14,
+                                flex: 1,
+                                textAlign: "right",
+                                color:
+                                  myTeamName === f.away ? "#e8c252" : "#f0e6d2",
+                              }}
+                            >
+                              {f.away}
+                            </span>
+                            <Crest emoji={awayTeam?.crestEmoji} size={24} />
+                          </div>
+                          {blocked && (
+                            <p
+                              style={{
+                                color: "#f0c040",
+                                fontSize: 11,
+                                marginBottom: 8,
+                              }}
+                            >
+                              ⚠️ {homeIncomplete && f.home}
+                              {homeIncomplete && awayIncomplete && " y "}
+                              {awayIncomplete && f.away} no{" "}
+                              {homeIncomplete && awayIncomplete
+                                ? "tienen"
+                                : "tiene"}{" "}
+                              los {MIN_SQUAD_TO_PLAY} jugadores mínimos.
+                            </p>
+                          )}
+                          <button
+                            onClick={() =>
+                              !blocked && canEdit && openResult(idx)
+                            }
+                            disabled={blocked || !canEdit}
+                            style={{
+                              ...btn(
+                                blocked
+                                  ? "#1a2030"
+                                  : !canEdit
+                                    ? "#1a2030"
+                                    : undefined,
+                              ),
+                              color:
+                                blocked || !canEdit ? "#4a5a6a" : "#443b03",
+                              cursor:
+                                blocked || !canEdit ? "not-allowed" : "pointer",
+                            }}
+                          >
+                            {blocked
+                              ? "🔒 Bloqueado"
+                              : !canEdit
+                                ? "🔒 Sin acceso"
+                                : "+ Añadir resultado"}
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
-                  {(f.scorers?.length > 0 || f.mvp) && (
-                    <div
-                      style={{
-                        marginTop: 8,
-                        paddingTop: 8,
-                        borderTop: "1px solid #241e10",
-                      }}
-                    >
-                      {[f.home, f.away].map((teamName) => {
-                        const teamScorers = (f.scorers || []).filter(
-                          (s) => s.team === teamName,
-                        );
-                        const teamAssists = (f.assists || []).filter(
-                          (a) => a.team === teamName,
-                        );
-                        if (
-                          teamScorers.length === 0 &&
-                          teamAssists.length === 0
-                        )
-                          return null;
-                        const t = teams.find((x) => x.name === teamName);
-                        const getPlayer = (id) =>
-                          allPlayersOf(t).find((p) => p.id === id);
-                        return (
-                          <div key={teamName} style={{ marginBottom: 6 }}>
+                );
+              })()}
+
+            {/* TAB JUGADOS */}
+            {fixturesTab === "played" &&
+              (() => {
+                const filtered = [...played]
+                  .reverse()
+                  .filter(
+                    (f) =>
+                      fixturesTeamFilter === "all" ||
+                      f.home === fixturesTeamFilter ||
+                      f.away === fixturesTeamFilter,
+                  );
+                return (
+                  <div>
+                    {filtered.length === 0 && (
+                      <p
+                        style={{
+                          color: "#8a7a5a",
+                          fontSize: 13,
+                          textAlign: "center",
+                          marginTop: 20,
+                        }}
+                      >
+                        {fixturesTeamFilter === "all"
+                          ? "Sin partidos jugados aún."
+                          : `No hay partidos jugados de ${fixturesTeamFilter}.`}
+                      </p>
+                    )}
+                    {filtered.map((f) => {
+                      const idx = fixtures.indexOf(f);
+                      const canEdit =
+                        isAdmin ||
+                        myTeamName === f.home ||
+                        myTeamName === f.away;
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            ...card,
+                            cursor: canEdit ? "pointer" : "default",
+                          }}
+                          onClick={() => {
+                            if (canEdit) openResult(idx);
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <Crest
+                              emoji={
+                                teams.find((t) => t.name === f.home)?.crestEmoji
+                              }
+                              size={22}
+                            />
+                            <span
+                              style={{
+                                fontWeight: 600,
+                                fontSize: 13,
+                                flex: 1,
+                                color:
+                                  f.homeGoals > f.awayGoals
+                                    ? "#27ae60"
+                                    : f.homeGoals < f.awayGoals
+                                      ? "#8a7a5a"
+                                      : "#f0e6d2",
+                              }}
+                            >
+                              {f.home}
+                            </span>
+                            <div
+                              style={{
+                                background: "#0a0805",
+                                border: "1px solid #2e2615",
+                                borderRadius: 6,
+                                padding: "3px 10px",
+                                fontWeight: 800,
+                                fontSize: 14,
+                                color: "#f0c040",
+                              }}
+                            >
+                              {f.homeGoals}-{f.awayGoals}
+                            </div>
+                            <span
+                              style={{
+                                fontWeight: 600,
+                                fontSize: 13,
+                                flex: 1,
+                                textAlign: "right",
+                                color:
+                                  f.awayGoals > f.homeGoals
+                                    ? "#27ae60"
+                                    : f.awayGoals < f.homeGoals
+                                      ? "#8a7a5a"
+                                      : "#f0e6d2",
+                              }}
+                            >
+                              {f.away}
+                            </span>
+                            <Crest
+                              emoji={
+                                teams.find((t) => t.name === f.away)?.crestEmoji
+                              }
+                              size={22}
+                            />
+                          </div>
+                          {!canEdit && (
                             <div
                               style={{
                                 fontSize: 10,
-                                color: "#8a7a5a",
-                                fontWeight: 700,
-                                marginBottom: 3,
+                                color: "#5a5040",
+                                textAlign: "right",
+                                marginTop: 4,
                               }}
                             >
-                              {teamName}
+                              🔒 Solo pueden editar los equipos implicados
                             </div>
+                          )}
+                          {(f.scorers?.length > 0 || f.mvp) && (
                             <div
                               style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 4,
+                                marginTop: 8,
+                                paddingTop: 8,
+                                borderTop: "1px solid #241e10",
                               }}
                             >
-                              {teamScorers.map((s, i) => (
-                                <span
-                                  key={i}
-                                  style={{
-                                    background: "rgba(192,57,43,0.15)",
-                                    border: "1px solid #c0392b",
-                                    borderRadius: 6,
-                                    padding: "2px 6px",
-                                    fontSize: 10,
-                                    color: "#f0e6d2",
-                                  }}
-                                >
-                                  ⚽ {getPlayer(s.playerId)?.name || "?"}
-                                </span>
-                              ))}
-                              {teamAssists.map((a, i) => (
-                                <span
-                                  key={i}
-                                  style={{
-                                    background: "rgba(39,174,96,0.1)",
-                                    border: "1px solid #27ae60",
-                                    borderRadius: 6,
-                                    padding: "2px 6px",
-                                    fontSize: 10,
-                                    color: "#f0e6d2",
-                                  }}
-                                >
-                                  🅰️ {getPlayer(a.playerId)?.name || "?"}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {f.mvp && (
-                        <div style={{ marginTop: 4 }}>
-                          <span
-                            style={{
-                              background: "rgba(240,192,64,0.15)",
-                              border: "1px solid #f0c040",
-                              borderRadius: 6,
-                              padding: "2px 8px",
-                              fontSize: 10,
-                              color: "#f0c040",
-                              fontWeight: 700,
-                            }}
-                          >
-                            🏅 MVP:{" "}
-                            {(() => {
-                              for (const t of teams) {
-                                const p = allPlayersOf(t).find(
-                                  (pp) => pp.id === f.mvp,
+                              {[f.home, f.away].map((teamName) => {
+                                const teamScorers = (f.scorers || []).filter(
+                                  (s) => s.team === teamName,
                                 );
-                                if (p) return p.name;
-                              }
-                              return "?";
-                            })()}
-                          </span>
+                                const teamAssists = (f.assists || []).filter(
+                                  (a) => a.team === teamName,
+                                );
+                                if (
+                                  teamScorers.length === 0 &&
+                                  teamAssists.length === 0
+                                )
+                                  return null;
+                                const t = teams.find(
+                                  (x) => x.name === teamName,
+                                );
+                                const getPlayer = (id) =>
+                                  allPlayersOf(t).find((p) => p.id === id);
+                                return (
+                                  <div
+                                    key={teamName}
+                                    style={{ marginBottom: 6 }}
+                                  >
+                                    <div
+                                      style={{
+                                        fontSize: 10,
+                                        color: "#8a7a5a",
+                                        fontWeight: 700,
+                                        marginBottom: 3,
+                                      }}
+                                    >
+                                      {teamName}
+                                    </div>
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        flexWrap: "wrap",
+                                        gap: 4,
+                                      }}
+                                    >
+                                      {teamScorers.map((s, i) => (
+                                        <span
+                                          key={i}
+                                          style={{
+                                            background: "rgba(192,57,43,0.15)",
+                                            border: "1px solid #c0392b",
+                                            borderRadius: 6,
+                                            padding: "2px 6px",
+                                            fontSize: 10,
+                                            color: "#f0e6d2",
+                                          }}
+                                        >
+                                          ⚽{" "}
+                                          {getPlayer(s.playerId)?.name || "?"}
+                                        </span>
+                                      ))}
+                                      {teamAssists.map((a, i) => (
+                                        <span
+                                          key={i}
+                                          style={{
+                                            background: "rgba(39,174,96,0.1)",
+                                            border: "1px solid #27ae60",
+                                            borderRadius: 6,
+                                            padding: "2px 6px",
+                                            fontSize: 10,
+                                            color: "#f0e6d2",
+                                          }}
+                                        >
+                                          🅰️{" "}
+                                          {getPlayer(a.playerId)?.name || "?"}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {f.mvp && (
+                                <div style={{ marginTop: 4 }}>
+                                  <span
+                                    style={{
+                                      background: "rgba(240,192,64,0.15)",
+                                      border: "1px solid #f0c040",
+                                      borderRadius: 6,
+                                      padding: "2px 8px",
+                                      fontSize: 10,
+                                      color: "#f0c040",
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    🏅{" "}
+                                    {(() => {
+                                      for (const t of teams) {
+                                        const p = allPlayersOf(t).find(
+                                          (pp) => pp.id === f.mvp,
+                                        );
+                                        if (p) return p.name;
+                                      }
+                                      return "?";
+                                    })()}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
           </div>
         )}
 
@@ -6724,70 +6842,68 @@ export default function FifaLiga() {
                     {fixtures[pendingResult]?.away}
                   </span>
                 </div>
-                {[
-                  fixtures[pendingResult]?.home,
-                  fixtures[pendingResult]?.away,
-                ].map((teamName) => {
-                  const teamScorers = matchEvents.scorers.filter(
-                    (s) => s.team === teamName,
+                {(() => {
+                  const home = fixtures[pendingResult]?.home;
+                  const away = fixtures[pendingResult]?.away;
+                  const homeScorers = matchEvents.scorers.filter(
+                    (s) => s.team === home,
                   );
-                  const teamAssists = matchEvents.assists.filter(
-                    (a) => a.team === teamName,
+                  const awayScorers = matchEvents.scorers.filter(
+                    (s) => s.team === away,
                   );
-                  if (teamScorers.length === 0 && teamAssists.length === 0)
+                  const homeTeam = teams.find((x) => x.name === home);
+                  const awayTeam = teams.find((x) => x.name === away);
+                  const getPlayer = (team, id) =>
+                    allPlayersOf(team).find((p) => p.id === id);
+                  if (homeScorers.length === 0 && awayScorers.length === 0)
                     return null;
-                  const t = teams.find((x) => x.name === teamName);
-                  const getPlayer = (id) =>
-                    allPlayersOf(t).find((p) => p.id === id);
                   return (
-                    <div key={teamName} style={{ marginBottom: 6 }}>
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      {/* Local — izquierda */}
                       <div
                         style={{
-                          fontSize: 10,
-                          color: "#8a7a5a",
-                          fontWeight: 700,
-                          marginBottom: 4,
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                          gap: 3,
                         }}
                       >
-                        {teamName}
-                      </div>
-                      <div
-                        style={{ display: "flex", flexWrap: "wrap", gap: 4 }}
-                      >
-                        {teamScorers.map((s, i) => (
+                        {homeScorers.map((s, i) => (
                           <span
                             key={i}
-                            style={{
-                              background: "rgba(192,57,43,0.15)",
-                              border: "1px solid #c0392b",
-                              borderRadius: 6,
-                              padding: "2px 7px",
-                              fontSize: 11,
-                              color: "#f0e6d2",
-                            }}
+                            style={{ fontSize: 11, color: "#f0e6d2" }}
                           >
-                            ⚽ {getPlayer(s.playerId)?.name || "?"}
+                            ⚽ {getPlayer(homeTeam, s.playerId)?.name || "?"}
                           </span>
                         ))}
-                        {teamAssists.map((a, i) => (
+                      </div>
+                      {/* Visitante — derecha */}
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-end",
+                          gap: 3,
+                        }}
+                      >
+                        {awayScorers.map((s, i) => (
                           <span
                             key={i}
                             style={{
-                              background: "rgba(39,174,96,0.1)",
-                              border: "1px solid #27ae60",
-                              borderRadius: 6,
-                              padding: "2px 7px",
                               fontSize: 11,
                               color: "#f0e6d2",
+                              textAlign: "right",
                             }}
                           >
-                            🅰️ {getPlayer(a.playerId)?.name || "?"}
+                            {getPlayer(awayTeam, s.playerId)?.name || "?"} ⚽
                           </span>
                         ))}
                       </div>
                     </div>
                   );
-                })}
+                })()}
                 {matchEvents.mvp && (
                   <div style={{ marginTop: 6 }}>
                     <span
