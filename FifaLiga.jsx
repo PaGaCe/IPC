@@ -2884,6 +2884,22 @@ export default function FifaLiga() {
               {myTeamName}
             </div>
           )}
+          {started && myTeamName && "Notification" in window && (
+            <button
+              onClick={registerFcm}
+              title="Activar notificaciones"
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 18,
+                padding: 4,
+                opacity: Notification.permission === "granted" ? 0.4 : 1,
+              }}
+            >
+              {Notification.permission === "granted" ? "🔔" : "🔕"}
+            </button>
+          )}
           {leagueCode && (
             <button
               onClick={() =>
