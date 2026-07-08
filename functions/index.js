@@ -3,6 +3,19 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 
+function parseValue(data) {
+  if (!data) return null;
+  const raw = data.value;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  return raw;
+}
+
 async function sendToTeam(teamName, title, body) {
   const snapshot = await admin
     .firestore()
@@ -26,11 +39,13 @@ async function sendToTeam(teamName, title, body) {
 }
 
 exports.onOfferCreated = onDocumentWritten("shared_state/{leagueCode}", async (event) => {
-  const before = event.data.before?.data()?.value?.offers || [];
-  const after = event.data.after?.data()?.value?.offers || [];
-  if (after.length <= before.length) return;
+  const before = parseValue(event.data.before?.data());
+  const after = parseValue(event.data.after?.data());
+  const beforeOffers = before?.offers || [];
+  const afterOffers = after?.offers || [];
+  if (afterOffers.length <= beforeOffers.length) return;
 
-  const newOffer = after[after.length - 1];
+  const newOffer = afterOffers[afterOffers.length - 1];
   await sendToTeam(
     newOffer.toTeam,
     "Oferta recibida",
@@ -39,11 +54,13 @@ exports.onOfferCreated = onDocumentWritten("shared_state/{leagueCode}", async (e
 });
 
 exports.onClausePaid = onDocumentWritten("shared_state/{leagueCode}", async (event) => {
-  const before = event.data.before?.data()?.value?.clauseAlerts || [];
-  const after = event.data.after?.data()?.value?.clauseAlerts || [];
-  if (after.length <= before.length) return;
+  const before = parseValue(event.data.before?.data());
+  const after = parseValue(event.data.after?.data());
+  const beforeAlerts = before?.clauseAlerts || [];
+  const afterAlerts = after?.clauseAlerts || [];
+  if (afterAlerts.length <= beforeAlerts.length) return;
 
-  const newAlert = after[after.length - 1];
+  const newAlert = afterAlerts[afterAlerts.length - 1];
   await sendToTeam(
     newAlert.teamName,
     "Clausula pagada",
@@ -52,8 +69,8 @@ exports.onClausePaid = onDocumentWritten("shared_state/{leagueCode}", async (eve
 });
 
 exports.onMarketDay = onDocumentWritten("shared_state/{leagueCode}", async (event) => {
-  const after = event.data.after?.data()?.value;
-  const before = event.data.before?.data()?.value;
+  const after = parseValue(event.data.after?.data());
+  const before = parseValue(event.data.before?.data());
   if (!after?.marketDay || before?.marketDay === after.marketDay) return;
 
   const teams = after.teams || [];
