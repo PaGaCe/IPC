@@ -2884,45 +2884,47 @@ export default function FifaLiga() {
               {myTeamName}
             </div>
           )}
-          {started && myTeamName && "Notification" in window && (
-            <button
-              onClick={registerFcm}
-              title="Activar notificaciones"
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 18,
-                padding: 4,
-                opacity: Notification.permission === "granted" ? 0.4 : 1,
-              }}
-            >
-              {Notification.permission === "granted" ? "🔔" : "🔕"}
-            </button>
-          )}
-          {leagueCode && (
-            <button
-              onClick={() =>
-                setView(
-                  userProfile?.leagues?.length > 0
-                    ? VIEWS.MY_LEAGUES
-                    : VIEWS.HOME,
-                )
-              }
-              style={{
-                background: "transparent",
-                color: "#c9a227",
-                border: "1px solid #c9a227",
-                borderRadius: 8,
-                padding: "6px 10px",
-                cursor: "pointer",
-                fontWeight: 700,
-                fontSize: 12,
-              }}
-            >
-              ← Ligas
-            </button>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {started && myTeamName && "Notification" in window && (
+              <button
+                onClick={registerFcm}
+                title="Activar notificaciones"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 16,
+                  padding: 2,
+                  opacity: Notification.permission === "granted" ? 0.4 : 1,
+                }}
+              >
+                {Notification.permission === "granted" ? "🔔" : "🔕"}
+              </button>
+            )}
+            {leagueCode && (
+              <button
+                onClick={() =>
+                  setView(
+                    userProfile?.leagues?.length > 0
+                      ? VIEWS.MY_LEAGUES
+                      : VIEWS.HOME,
+                  )
+                }
+                style={{
+                  background: "transparent",
+                  color: "#c9a227",
+                  border: "1px solid #c9a227",
+                  borderRadius: 8,
+                  padding: "6px 10px",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  fontSize: 12,
+                }}
+              >
+                ← Ligas
+              </button>
+            )}
+          </div>
         </div>
         {started && myTeamObj && (
           <div
