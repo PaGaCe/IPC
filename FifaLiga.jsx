@@ -3909,117 +3909,205 @@ export default function FifaLiga() {
                               🔒 Solo pueden editar los equipos implicados
                             </div>
                           )}
-                          {(f.scorers?.length > 0 || f.mvp) && (
-                            <div
-                              style={{
-                                marginTop: 8,
-                                paddingTop: 8,
-                                borderTop: "1px solid #241e10",
-                              }}
-                            >
-                              {[f.home, f.away].map((teamName) => {
-                                const teamScorers = (f.scorers || []).filter(
-                                  (s) => s.team === teamName,
-                                );
-                                const teamAssists = (f.assists || []).filter(
-                                  (a) => a.team === teamName,
-                                );
-                                if (
-                                  teamScorers.length === 0 &&
-                                  teamAssists.length === 0
-                                )
-                                  return null;
-                                const t = teams.find(
-                                  (x) => x.name === teamName,
-                                );
-                                const getPlayer = (id) =>
-                                  allPlayersOf(t).find((p) => p.id === id);
-                                return (
-                                  <div
-                                    key={teamName}
-                                    style={{ marginBottom: 6 }}
-                                  >
-                                    <div
-                                      style={{
-                                        fontSize: 10,
-                                        color: "#8a7a5a",
-                                        fontWeight: 700,
-                                        marginBottom: 3,
-                                      }}
-                                    >
-                                      {teamName}
-                                    </div>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        flexWrap: "wrap",
-                                        gap: 4,
-                                      }}
-                                    >
-                                      {teamScorers.map((s, i) => (
-                                        <span
-                                          key={i}
+                          {(f.scorers?.length > 0 ||
+                            f.assists?.length > 0 ||
+                            f.mvp) &&
+                            (() => {
+                              const homeTeam = teams.find(
+                                (x) => x.name === f.home,
+                              );
+                              const awayTeam = teams.find(
+                                (x) => x.name === f.away,
+                              );
+                              const getPlayer = (team, id) =>
+                                allPlayersOf(team).find((p) => p.id === id);
+                              const homeScorers = (f.scorers || []).filter(
+                                (s) => s.team === f.home,
+                              );
+                              const awayScorers = (f.scorers || []).filter(
+                                (s) => s.team === f.away,
+                              );
+                              const homeAssists = (f.assists || []).filter(
+                                (a) => a.team === f.home,
+                              );
+                              const awayAssists = (f.assists || []).filter(
+                                (a) => a.team === f.away,
+                              );
+                              return (
+                                <div
+                                  style={{
+                                    marginTop: 8,
+                                    paddingTop: 8,
+                                    borderTop: "1px solid #241e10",
+                                  }}
+                                >
+                                  {(homeScorers.length > 0 ||
+                                    awayScorers.length > 0) && (
+                                    <>
+                                      <div
+                                        style={{
+                                          fontSize: 10,
+                                          color: "#c0392b",
+                                          fontWeight: 700,
+                                          marginBottom: 6,
+                                        }}
+                                      >
+                                        ⚽ Goleadores
+                                      </div>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          gap: 8,
+                                          marginBottom: 8,
+                                        }}
+                                      >
+                                        <div
                                           style={{
-                                            background: "rgba(192,57,43,0.15)",
-                                            border: "1px solid #c0392b",
-                                            borderRadius: 6,
-                                            padding: "2px 6px",
-                                            fontSize: 10,
-                                            color: "#f0e6d2",
+                                            flex: 1,
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            alignItems: "flex-start",
+                                            gap: 2,
                                           }}
                                         >
-                                          ⚽{" "}
-                                          {getPlayer(s.playerId)?.name || "?"}
-                                        </span>
-                                      ))}
-                                      {teamAssists.map((a, i) => (
-                                        <span
-                                          key={i}
+                                          {homeScorers.map((s, i) => (
+                                            <span
+                                              key={i}
+                                              style={{
+                                                fontSize: 11,
+                                                color: "#f0e6d2",
+                                              }}
+                                            >
+                                              ⚽{" "}
+                                              {getPlayer(homeTeam, s.playerId)
+                                                ?.name || "?"}
+                                            </span>
+                                          ))}
+                                        </div>
+                                        <div
                                           style={{
-                                            background: "rgba(39,174,96,0.1)",
-                                            border: "1px solid #27ae60",
-                                            borderRadius: 6,
-                                            padding: "2px 6px",
-                                            fontSize: 10,
-                                            color: "#f0e6d2",
+                                            flex: 1,
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            alignItems: "flex-end",
+                                            gap: 2,
                                           }}
                                         >
-                                          🅰️{" "}
-                                          {getPlayer(a.playerId)?.name || "?"}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                              {f.mvp && (
-                                <div style={{ marginTop: 4 }}>
-                                  <span
-                                    style={{
-                                      background: "rgba(240,192,64,0.15)",
-                                      border: "1px solid #f0c040",
-                                      borderRadius: 6,
-                                      padding: "2px 8px",
-                                      fontSize: 10,
-                                      color: "#f0c040",
-                                      fontWeight: 700,
-                                    }}
-                                  >
-                                    🏅{" "}
-                                    {(() => {
+                                          {awayScorers.map((s, i) => (
+                                            <span
+                                              key={i}
+                                              style={{
+                                                fontSize: 11,
+                                                color: "#f0e6d2",
+                                                textAlign: "right",
+                                              }}
+                                            >
+                                              {getPlayer(awayTeam, s.playerId)
+                                                ?.name || "?"}{" "}
+                                              ⚽
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+                                  {(homeAssists.length > 0 ||
+                                    awayAssists.length > 0) && (
+                                    <>
+                                      <div
+                                        style={{
+                                          fontSize: 10,
+                                          color: "#27ae60",
+                                          fontWeight: 700,
+                                          marginBottom: 6,
+                                        }}
+                                      >
+                                        🅰️ Asistentes
+                                      </div>
+                                      <div
+                                        style={{
+                                          display: "flex",
+                                          gap: 8,
+                                          marginBottom: 8,
+                                        }}
+                                      >
+                                        <div
+                                          style={{
+                                            flex: 1,
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            alignItems: "flex-start",
+                                            gap: 2,
+                                          }}
+                                        >
+                                          {homeAssists.map((a, i) => (
+                                            <span
+                                              key={i}
+                                              style={{
+                                                fontSize: 11,
+                                                color: "#f0e6d2",
+                                              }}
+                                            >
+                                              🅰️{" "}
+                                              {getPlayer(homeTeam, a.playerId)
+                                                ?.name || "?"}
+                                            </span>
+                                          ))}
+                                        </div>
+                                        <div
+                                          style={{
+                                            flex: 1,
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            alignItems: "flex-end",
+                                            gap: 2,
+                                          }}
+                                        >
+                                          {awayAssists.map((a, i) => (
+                                            <span
+                                              key={i}
+                                              style={{
+                                                fontSize: 11,
+                                                color: "#f0e6d2",
+                                                textAlign: "right",
+                                              }}
+                                            >
+                                              {getPlayer(awayTeam, a.playerId)
+                                                ?.name || "?"}{" "}
+                                              🅰️
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+                                  {f.mvp &&
+                                    (() => {
+                                      let mvpPlayer = null;
                                       for (const t of teams) {
-                                        const p = allPlayersOf(t).find(
+                                        mvpPlayer = allPlayersOf(t).find(
                                           (pp) => pp.id === f.mvp,
                                         );
-                                        if (p) return p.name;
+                                        if (mvpPlayer) break;
                                       }
-                                      return "?";
+                                      return mvpPlayer ? (
+                                        <div
+                                          style={{
+                                            fontSize: 11,
+                                            color: "#f0c040",
+                                            fontWeight: 600,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 4,
+                                          }}
+                                        >
+                                          🏅 {mvpPlayer.name}
+                                        </div>
+                                      ) : null;
                                     })()}
-                                  </span>
                                 </div>
-                              )}
-                            </div>
-                          )}
+                              );
+                            })()}
                         </div>
                       );
                     })}
