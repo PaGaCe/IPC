@@ -5148,62 +5148,71 @@ export default function FifaLiga() {
                 marginBottom: 12,
               }}
             >
-              🧤 Trofeo Zamora
-            </div>
-            {zamoraRanking.length === 0 ? (
-              <p style={{ color: "#8a7a5a", fontSize: 13 }}>Sin datos aún.</p>
-            ) : (
-              zamoraRanking.map((z, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "7px 0",
-                    borderBottom: "1px solid #241e10",
-                  }}
-                >
-                  <span
+              <div
+                style={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  marginBottom: 10,
+                }}
+              >
+                🧤 Trofeo Zamora
+              </div>
+              {zamoraRanking.length === 0 ? (
+                <p style={{ color: "#8a7a5a", fontSize: 13 }}>Sin datos aún.</p>
+              ) : (
+                zamoraRanking.map((z, i) => (
+                  <div
+                    key={i}
                     style={{
-                      color: i === 0 ? "#e8c252" : "#8a7a5a",
-                      fontWeight: 800,
-                      minWidth: 18,
-                      fontSize: 13,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "7px 0",
+                      borderBottom: "1px solid #241e10",
                     }}
                   >
-                    {i + 1}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
+                    <span
                       style={{
-                        fontWeight: 600,
+                        color: i === 0 ? "#e8c252" : "#8a7a5a",
+                        fontWeight: 800,
+                        minWidth: 18,
                         fontSize: 13,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
                       }}
                     >
-                      {z.keeper.name}
+                      {i + 1}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 13,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {z.keeper.name}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#8a7a5a" }}>
+                        {z.teamName}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 10, color: "#8a7a5a" }}>
-                      {z.teamName}
-                    </div>
+                    <span
+                      style={{
+                        fontWeight: 800,
+                        color: "#e8c252",
+                        fontSize: 15,
+                        minWidth: 50,
+                        textAlign: "right",
+                      }}
+                    >
+                      {z.ga} enc.
+                    </span>
                   </div>
-                  <span
-                    style={{
-                      fontWeight: 800,
-                      color: "#e8c252",
-                      fontSize: 15,
-                      minWidth: 50,
-                      textAlign: "right",
-                    }}
-                  >
-                    {z.ga} enc.
-                  </span>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
             {/* TOP REVALORIZADOS */}
             <div
               style={{
