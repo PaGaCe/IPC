@@ -24,7 +24,10 @@ export async function getFcmToken() {
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
   if (!vapidKey) return null;
   try {
-    const token = await getToken(messaging, { vapidKey });
+    const registration = await navigator.serviceWorker.register(
+      "/firebase-messaging-sw.js",
+    );
+    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration });
     return token;
   } catch (e) {
     console.error("FCM getToken failed:", e);

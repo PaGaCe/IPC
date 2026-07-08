@@ -214,19 +214,19 @@ export default function FifaLiga() {
   }, [userProfile?.uid, myTeamName]);
 
   async function registerFcm() {
-    try {
-      const reg = await navigator.serviceWorker.register(
-        "/firebase-messaging-sw.js",
-      );
-      console.log("SW registered", reg);
-    } catch (e) {
-      console.error("SW registration failed:", e);
-    }
     const hasPermission = await requestPermission();
-    if (!hasPermission) return;
+    if (!hasPermission) {
+      showToast("Permiso de notificaciones denegado", "error");
+      return;
+    }
     const token = await getFcmToken();
-    if (token && userProfile?.uid && myTeamName) {
+    if (!token) {
+      showToast("No se pudo obtener el token. ¿Falta VITE_FIREBASE_VAPID_KEY?", "error");
+      return;
+    }
+    if (userProfile?.uid && myTeamName) {
       await saveTokenForTeam(userProfile.uid, myTeamName, token);
+      showToast("Notificaciones activadas", "success");
     }
   }
 
