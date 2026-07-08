@@ -1878,7 +1878,7 @@ export default function FifaLiga() {
       topScorers,
       topAssists,
       topMvps,
-      zamoraWinner,
+      zamoraRanking,
       topRevalorizados,
       sorted,
     };
@@ -7939,7 +7939,7 @@ export default function FifaLiga() {
           topScorers={seasonWrap.topScorers}
           topAssists={seasonWrap.topAssists}
           topMvps={seasonWrap.topMvps}
-          zamoraRanking={seasonWrap.zamoraWinner}
+          zamoraRanking={seasonWrap.zamoraRanking}
           topRevalorizados={seasonWrap.topRevalorizados}
           onClose={() => setWrappedOpen(false)}
         />

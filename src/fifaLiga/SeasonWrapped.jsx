@@ -198,7 +198,7 @@ export default function SeasonWrapped({
         {current.id === "topmvp" && (
           <SlidePlayer
             emoji="🏅"
-            label="Más MVPs"
+            label="MVP de la temporada"
             player={topMvps[0]}
             statLabel="MVPs"
             statValue={topMvps[0]?.mvps}
