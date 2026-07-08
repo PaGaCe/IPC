@@ -3,6 +3,12 @@ import { storage } from "./firebaseStorage";
 import * as Flags from "country-flag-icons/react/3x2";
 import logoImg from "./src/assets/logo.webp";
 import {
+  onForegroundMessage,
+  requestPermission,
+  getFcmToken,
+  saveTokenForTeam,
+} from "./src/firebaseMessaging.js";
+import {
   signInWithGoogle,
   signOutUser,
   onAuthChange,
@@ -198,6 +204,39 @@ export default function FifaLiga() {
   // ── Storage key helpers ──
   const leagueKey = (code) => `league_${code}`;
   const deviceKey = "fifaLigaDevice"; // local, not shared: { leagueCode, isAdmin, myTeamName }
+
+  // ─── Push notifications ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
+    if (Notification.permission === "granted") {
+      registerFcm();
+    }
+  }, [userProfile?.uid, myTeamName]);
+
+  async function registerFcm() {
+    try {
+      const reg = await navigator.serviceWorker.register(
+        "/firebase-messaging-sw.js",
+      );
+      console.log("SW registered", reg);
+    } catch (e) {
+      console.error("SW registration failed:", e);
+    }
+    const hasPermission = await requestPermission();
+    if (!hasPermission) return;
+    const token = await getFcmToken();
+    if (token && userProfile?.uid && myTeamName) {
+      await saveTokenForTeam(userProfile.uid, myTeamName, token);
+    }
+  }
+
+  useEffect(() => {
+    const unsub = onForegroundMessage((payload) => {
+      const { title, body } = payload.data || {};
+      if (title && body) showToast(`${title}: ${body}`, "info");
+    });
+    return unsub;
+  }, []);
 
   // ── Step 0: listen for Firebase auth state (persists across visits) ──
   useEffect(() => {
