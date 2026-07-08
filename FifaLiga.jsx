@@ -2845,29 +2845,6 @@ export default function FifaLiga() {
               {myTeamName}
             </div>
           )}
-          {wrappedAvailable && started && (
-            <button
-              onClick={() => {
-                setWrappedSlide(0);
-                setWrappedOpen(true);
-              }}
-              style={{
-                background: "linear-gradient(135deg,#c9a227,#8a6f1a)",
-                color: "#0a0805",
-                border: "none",
-                borderRadius: 8,
-                padding: "6px 10px",
-                cursor: "pointer",
-                fontWeight: 700,
-                fontSize: 12,
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              🎬 Resumen
-            </button>
-          )}
           {leagueCode && (
             <button
               onClick={() =>
@@ -2974,6 +2951,43 @@ export default function FifaLiga() {
                 </div>
                 <button onClick={startNewSeason} style={btn("#8e44ad")}>
                   Repartir premios e iniciar nueva temporada
+                </button>
+              </div>
+            )}
+            {wrappedAvailable && (
+              <div
+                style={{
+                  marginTop: 10,
+                  background: "linear-gradient(135deg,#c9a227,#8a6f1a)",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{
+                    color: "#0a0805",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    marginBottom: 8,
+                  }}
+                >
+                  🎬 Resumen de temporada disponible
+                </div>
+                <button
+                  onClick={() => setWrappedOpen(true)}
+                  style={{
+                    background: "#0a0805",
+                    color: "#c9a227",
+                    border: "none",
+                    borderRadius: 8,
+                    padding: "6px 14px",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  Ver resumen
                 </button>
               </div>
             )}
@@ -8047,7 +8061,11 @@ export default function FifaLiga() {
           topMvps={seasonWrap.topMvps}
           zamoraRanking={seasonWrap.zamoraRanking}
           topRevalorizados={seasonWrap.topRevalorizados}
-          onClose={() => setWrappedOpen(false)}
+          onClose={() => {
+            setWrappedOpen(false);
+            setWrappedAvailable(false);
+            save({ wrappedAvailable: false, seasonWrap: null });
+          }}
         />
       )}
     </div>

@@ -427,12 +427,6 @@ function SlideChampion({ team }) {
           </div>
           <div style={{ fontSize: 11, color: "#8a7a5a" }}>victorias</div>
         </div>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 28, fontWeight: 800, color: "#c9a227" }}>
-            {fmtM(team.budget)}
-          </div>
-          <div style={{ fontSize: 11, color: "#8a7a5a" }}>presupuesto</div>
-        </div>
       </div>
     </>
   );
