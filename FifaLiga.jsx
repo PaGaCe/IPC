@@ -438,51 +438,56 @@ const PlayerRow = ({
           >
             {mode === "own" && !isStar && (
               <>
-                <span
-                  style={{
-                    color: "#c0392b",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    marginRight: "auto",
-                  }}
-                >
-                  Cláusula: {fmtM(clauseTotal)}
-                  {p.listedForSale && (
-                    <span style={{ color: "#27ae60" }}> · en venta</span>
-                  )}
-                </span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0.5"
-                  step="0.5"
-                  placeholder="M€"
-                  value={clauseInvestInput[p.id] || ""}
-                  onChange={(e) =>
-                    onClauseInvestChange(p.id, e.target.value)
-                  }
-                  style={{
-                    ...inputStyle,
-                    width: 55,
-                    padding: "3px 6px",
-                    fontSize: 16,
-                  }}
-                />
-                <button
-                  onClick={() => onInvestInClause(teamName, p.id)}
-                  style={{
-                    background: "#c9a227",
-                    color: "#0a0805",
-                    border: "none",
-                    borderRadius: 6,
-                    padding: "3px 8px",
-                    cursor: "pointer",
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
-                >
-                  ↑Cláusula
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
+                  <span
+                    style={{
+                      color: "#c0392b",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Cláusula: {fmtM(clauseTotal)}
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min="0.5"
+                    step="0.5"
+                    placeholder="M€"
+                    value={clauseInvestInput[p.id] || ""}
+                    onChange={(e) =>
+                      onClauseInvestChange(p.id, e.target.value)
+                    }
+                    style={{
+                      ...inputStyle,
+                      width: 46,
+                      padding: "2px 4px",
+                      fontSize: 13,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <button
+                    onClick={() => onInvestInClause(teamName, p.id)}
+                    style={{
+                      background: "#c9a227",
+                      color: "#0a0805",
+                      border: "none",
+                      borderRadius: 6,
+                      padding: "2px 6px",
+                      cursor: "pointer",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    ↑Cláusula
+                  </button>
+                </div>
+                {p.listedForSale && (
+                  <span style={{ color: "#27ae60", fontSize: 10 }}>en venta</span>
+                )}
               </>
             )}
             {mode === "other" && !isStar && (
@@ -2965,22 +2970,6 @@ export default function FifaLiga() {
             </div>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            {started && myTeamName && "Notification" in window && (
-              <button
-                onClick={registerFcm}
-                title="Activar notificaciones"
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 16,
-                  padding: 2,
-                  opacity: Notification.permission === "granted" ? 0.4 : 1,
-                }}
-              >
-                {Notification.permission === "granted" ? "🔔" : "🔕"}
-              </button>
-            )}
             {leagueCode && (
               <button
                 onClick={() =>
@@ -3034,6 +3023,23 @@ export default function FifaLiga() {
                 {myTeamObj.points} pts
               </strong>
             </span>
+            {"Notification" in window && (
+              <button
+                onClick={registerFcm}
+                title="Activar notificaciones"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  padding: 0,
+                  marginLeft: "auto",
+                  opacity: Notification.permission === "granted" ? 0.4 : 1,
+                }}
+              >
+                {Notification.permission === "granted" ? "🔔" : "🔕"}
+              </button>
+            )}
           </div>
         )}
       </div>
