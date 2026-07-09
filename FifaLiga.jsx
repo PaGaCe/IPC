@@ -208,7 +208,7 @@ export default function FifaLiga() {
   // ─── Push notifications ──────────────────────────────────────────────
   useEffect(() => {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
-    if (Notification.permission === "granted" || Notification.permission === "default") {
+    if (Notification.permission === "granted") {
       registerFcm();
     }
   }, [userProfile?.uid, myTeamName]);
@@ -221,7 +221,10 @@ export default function FifaLiga() {
     }
     const token = await getFcmToken();
     if (!token) {
-      showToast("No se pudo obtener el token. ¿Falta VITE_FIREBASE_VAPID_KEY?", "error");
+      showToast(
+        "No se pudo obtener el token. ¿Falta VITE_FIREBASE_VAPID_KEY?",
+        "error",
+      );
       return;
     }
     if (userProfile?.uid && myTeamName) {
