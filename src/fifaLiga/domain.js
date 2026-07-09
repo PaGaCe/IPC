@@ -107,7 +107,6 @@ export function genLeagueCode() {
 // ─── ECONOMY ─────────────────────────────────────────────────────────────────
 export const BUDGET = 100;
 export const MAX_SQUAD = 23;
-export const CLAUSE_LOCK_HOURS = 24;
 export const PRIZE_WIN = 5,
   PRIZE_DRAW = 2,
   PRIZE_LOSS = 1;
@@ -173,21 +172,17 @@ export function calcMarketValue(player) {
 export function isNightClauseLock() {
   const now = new Date();
   const hour = now.getHours(); // local hour
-  return hour >= 18 || hour < 6;
+  return hour >= 19 || hour < 4;
 }
 
-export function isClauseLocked(player) {
+export function isClauseLocked(player, teamLastMatchAt) {
   // night general block
   if (isNightClauseLock()) return true;
 
   if (!player.joinedAt) return false; // original draft players are never locked
-  const elapsedMs = Date.now() - player.joinedAt;
-  return elapsedMs < CLAUSE_LOCK_HOURS * 60 * 60 * 1000;
-}
-export function clauseLockRemainingMs(player) {
-  if (!player.joinedAt) return 0;
-  const elapsedMs = Date.now() - player.joinedAt;
-  return Math.max(0, CLAUSE_LOCK_HOURS * 60 * 60 * 1000 - elapsedMs);
+  // locked if the team hasn't played a match since the player joined
+  if (!teamLastMatchAt) return true;
+  return player.joinedAt > teamLastMatchAt;
 }
 export function shuffle(arr) {
   const a = [...arr];
@@ -539,6 +534,7 @@ export function initTeam(name) {
     squad: null,
     budget: BUDGET,
     crest: null,
+    lastMatchAt: null,
   };
 }
 export function getDayKey() {

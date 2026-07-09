@@ -63,7 +63,6 @@ import {
   calcMarketValue,
   isNightClauseLock,
   isClauseLocked,
-  clauseLockRemainingMs,
   shuffle,
   generateBracket,
   propagateBracketWinners,
@@ -1061,13 +1060,33 @@ export default function FifaLiga() {
     const MARKET_INTERVAL_MS = 12 * 60 * 60 * 1000;
     if (elapsed >= MARKET_INTERVAL_MS) resolveAuctions();
   };
-  const resolveAuctions = () => {
+  const resolveAuctions = async () => {
+    // Fetch the latest shared state from Firestore to avoid race conditions
+    // where a bid was placed on another device but hasn't synced locally yet.
+    let latestTeams = teams;
+    let latestBids = bids;
+    let latestMarketList = marketList;
+    let latestMarketHistory = marketHistory;
+    let latestMarketDay = marketDay;
+    try {
+      const fresh = await storage.get(leagueKey(leagueCode), true);
+      if (fresh) {
+        const s = JSON.parse(fresh.value);
+        if (s.teams) latestTeams = s.teams;
+        if (s.bids) latestBids = s.bids;
+        if (s.marketList) latestMarketList = s.marketList;
+        if (s.marketHistory) latestMarketHistory = s.marketHistory;
+        if (s.marketDay) latestMarketDay = s.marketDay;
+      }
+    } catch (e) {
+      console.error("resolveAuctions: failed to fetch latest state, using local:", e);
+    }
     const now = Date.now();
     const today = getDayKey();
-    let updatedTeams = [...teams];
-    const newHistory = [...marketHistory];
-    for (const player of marketList) {
-      const playerBids = bids[player.marketId] || {};
+    let updatedTeams = [...latestTeams];
+    const newHistory = [...latestMarketHistory];
+    for (const player of latestMarketList) {
+      const playerBids = latestBids[player.marketId] || {};
       const entries = Object.entries(playerBids);
       if (entries.length === 0) continue;
       entries.sort((a, b) => b[1] - a[1]);
@@ -1079,7 +1098,7 @@ export default function FifaLiga() {
         return t;
       });
       newHistory.push({
-        day: marketDay,
+        day: latestMarketDay,
         player: player.name,
         pos: player.pos,
         overall: player.overall,
@@ -1387,17 +1406,15 @@ export default function FifaLiga() {
     if (!myTeamName || myTeamName === sellerTeamName) return;
     if (isNightClauseLock()) {
       showToast(
-        "Las cláusulas están desactivadas entre las 18:00 y las 06:00.",
+        "Las cláusulas están desactivadas entre las 19:00 y las 04:00.",
       );
       setClauseConfirm(null);
       return;
     }
-    if (isClauseLocked(player)) {
-      const hoursLeft = Math.ceil(
-        clauseLockRemainingMs(player) / (60 * 60 * 1000),
-      );
+    const sellerTeam = teams.find((t) => t.name === sellerTeamName);
+    if (isClauseLocked(player, sellerTeam?.lastMatchAt)) {
       showToast(
-        `Cláusula bloqueada: este jugador llegó al equipo hace menos de 24h (quedan ~${hoursLeft}h)`,
+        `Cláusula bloqueada: este jugador se unió al equipo después del último partido. Disponible de nuevo tras el próximo.`,
       );
       setClauseConfirm(null);
       return;
@@ -1757,6 +1774,13 @@ export default function FifaLiga() {
       false,
     );
 
+    const matchTime = Date.now();
+    merged = merged.map((t) =>
+      t.name === f.home || t.name === f.away
+        ? { ...t, lastMatchAt: matchTime }
+        : t,
+    );
+
     setFixtures(newFix);
     setTeams(merged);
     setPR(null);
@@ -2085,10 +2109,7 @@ export default function FifaLiga() {
       (p.clauseInvested || 0) * 2;
     const team = teams.find((t) => t.name === teamName);
     const isStar = team?.squad?.star?.name === p.name;
-    const locked = mode === "other" && isClauseLocked(p);
-    const hoursLeft = locked
-      ? Math.ceil(clauseLockRemainingMs(p) / (60 * 60 * 1000))
-      : 0;
+    const locked = mode === "other" && isClauseLocked(p, team?.lastMatchAt);
     const ICON_SIZE = 28;
 
     return (
@@ -2371,6 +2392,7 @@ export default function FifaLiga() {
                   </span>
                   <input
                     type="number"
+                    inputMode="decimal"
                     min="0.5"
                     step="0.5"
                     placeholder="M€"
@@ -2385,7 +2407,7 @@ export default function FifaLiga() {
                       ...input,
                       width: 55,
                       padding: "3px 6px",
-                      fontSize: 11,
+                      fontSize: 16,
                     }}
                   />
                   <button
@@ -2414,7 +2436,7 @@ export default function FifaLiga() {
                   }}
                 >
                   {locked
-                    ? `🔒 Cláusula bloqueada (~${hoursLeft}h)`
+                    ? "🔒 Cláusula bloqueada (tras próximo partido)"
                     : `Cláusula: ${fmtM(clauseTotal)}`}
                 </span>
               )}
@@ -4526,22 +4548,31 @@ export default function FifaLiga() {
                     {availableLegends.length !== 1 ? "s" : ""} disponible
                     {availableLegends.length !== 1 ? "s" : ""}
                   </div>
-                  <button
-                    onClick={() => {
-                      const random =
-                        availableLegends[
-                          Math.floor(Math.random() * availableLegends.length)
-                        ];
-                      setLegendBuyConfirm(random);
-                    }}
-                    style={{
-                      ...btn("#c0392b"),
-                      padding: "10px 20px",
-                      fontSize: 13,
-                    }}
-                  >
-                    🎲 Obtener leyenda aleatoria — {fmtM(LEGEND_MARKET_PRICE)}
-                  </button>
+                  {(() => {
+                    const canAffordLegend = myTeamObj && myTeamObj.budget >= LEGEND_MARKET_PRICE;
+                    return (
+                      <button
+                        onClick={() => {
+                          if (!canAffordLegend) return;
+                          const random =
+                            availableLegends[
+                              Math.floor(Math.random() * availableLegends.length)
+                            ];
+                          setLegendBuyConfirm(random);
+                        }}
+                        disabled={!canAffordLegend}
+                        style={{
+                          ...btn(canAffordLegend ? "#c0392b" : "#3a3020"),
+                          padding: "10px 20px",
+                          fontSize: 13,
+                          cursor: canAffordLegend ? "pointer" : "not-allowed",
+                          opacity: canAffordLegend ? 1 : 0.5,
+                        }}
+                      >
+                        🎲 Obtener leyenda aleatoria — {fmtM(LEGEND_MARKET_PRICE)}
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -6506,7 +6537,7 @@ export default function FifaLiga() {
                     {totalBids === 1 ? "puja activa" : "pujas activas"}
                   </span>
                   <span style={{ color: "#27ae60" }}>
-                    💰 Disponible: <strong>{fmtM(available + myBid)}</strong>
+                    💰 Disponible: <strong>{fmtM(available)}</strong>
                   </span>
                 </div>
 
