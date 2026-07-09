@@ -92,6 +92,806 @@ import en from "i18n-iso-countries/langs/en.json";
 
 countries.registerLocale(en);
 
+/* ── Module-level utilities & components (stable references) ── */
+
+const FOOTBALL_COUNTRY_MAP = {
+  england: "GB",
+  uk: "GB",
+  "united kingdom": "GB",
+  scotland: "GB",
+  wales: "GB",
+  "northern ireland": "GB",
+  usa: "US",
+  "united states": "US",
+  "ivory coast": "CI",
+  "south korea": "KR",
+  "north korea": "KP",
+  russia: "RU",
+  iran: "IR",
+  eng: "GB",
+  esp: "ES",
+  fra: "FR",
+  ger: "DE",
+  ita: "IT",
+  bra: "BR",
+  arg: "AR",
+};
+
+const getCountryCode = (input) => {
+  if (!input) return null;
+  const normalized = input.toString().trim().toLowerCase();
+  if (FOOTBALL_COUNTRY_MAP[normalized]) {
+    return FOOTBALL_COUNTRY_MAP[normalized];
+  }
+  const iso = countries.getAlpha2Code(input.trim(), "en");
+  return iso || null;
+};
+
+const CountryFlag = ({ country, width = 16, height = 12 }) => {
+  const code = getCountryCode(country);
+  if (!code) return <span>🌍</span>;
+  const Key = code.toUpperCase();
+  const Component = Flags[Key];
+  if (!Component) return <span>🌍</span>;
+  return (
+    <Component
+      title={country}
+      style={{ width, height }}
+    />
+  );
+};
+
+const inputStyle = {
+  background: "#100d08",
+  border: "1px solid #2e2615",
+  borderRadius: 10,
+  padding: "12px 14px",
+  color: "#f0e6d2",
+  fontSize: 15,
+  outline: "none",
+  width: "100%",
+};
+
+const PlayerRow = ({
+  p,
+  teamName,
+  mode,
+  teams,
+  clauseInvestInput,
+  onClauseInvestChange,
+  onInvestInClause,
+  onToggleListForSale,
+  onDiscard,
+  onOpenOffer,
+  onPayClause,
+}) => {
+  const clauseTotal =
+    (p.clauseValue ?? clauseBase(p.overall, p.pos)) +
+    (p.clauseInvested || 0) * 2;
+  const team = teams.find((t) => t.name === teamName);
+  const isStar = team?.squad?.star?.name === p.name;
+  const locked = mode === "other" && isClauseLocked(p, team?.lastMatchAt);
+  const ICON_SIZE = 28;
+
+  return (
+    <div style={{ padding: "12px 0", borderBottom: "1px solid #241e10" }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
+        {/* ── COLUMNA IZQUIERDA: POS / NAT / CLUB ── */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-around",
+            alignItems: "center",
+            width: ICON_SIZE + 8,
+            flexShrink: 0,
+          }}
+        >
+          {/* POS */}
+          <div
+            style={{
+              width: ICON_SIZE + 8,
+              height: ICON_SIZE,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: posColor(p.pos || p.position),
+              borderRadius: 6,
+            }}
+          >
+            <span
+              style={{
+                color: "#fff",
+                fontSize: 9,
+                fontWeight: 800,
+                textAlign: "center",
+                lineHeight: 1,
+              }}
+            >
+              {p.pos || p.position}
+            </span>
+          </div>
+          {/* NAT */}
+          <div
+            style={{
+              width: ICON_SIZE + 8,
+              height: ICON_SIZE,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CountryFlag country={p.nat} />
+          </div>
+          {/* CLUB */}
+          <div
+            style={{
+              width: ICON_SIZE + 8,
+              height: ICON_SIZE,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {clubLogos[p.club] ? (
+              <img
+                src={clubLogos[p.club]}
+                alt={p.club}
+                style={{
+                  width: ICON_SIZE,
+                  height: ICON_SIZE,
+                  objectFit: "contain",
+                }}
+              />
+            ) : (
+              <span
+                style={{
+                  fontSize: 9,
+                  color: "#8a7a5a",
+                  textAlign: "center",
+                  lineHeight: 1.1,
+                }}
+              >
+                {p.club}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ── COLUMNA DERECHA: 4 filas ── */}
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-around",
+            gap: 4,
+          }}
+        >
+          {/* FILA 1: NAME + RATING + MARKET VALUE */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <span
+              style={{
+                fontWeight: 700,
+                fontSize: 14,
+                color: "#f0e6d2",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                flex: 1,
+                marginRight: 8,
+              }}
+            >
+              {p.name}
+            </span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                flexShrink: 0,
+              }}
+            >
+              {p.marketValue &&
+                p.marketValue > clauseBase(p.overall, p.pos) && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#27ae60",
+                      fontWeight: 700,
+                    }}
+                  >
+                    ↑{fmtM(p.marketValue)}
+                  </span>
+                )}
+              <span
+                style={{
+                  fontWeight: 800,
+                  color: ratingColor(p.overall),
+                  fontSize: 17,
+                }}
+              >
+                {p.overall}
+              </span>
+            </div>
+          </div>
+
+          {/* FILA 2: GOALS / ASSISTS / MVPS */}
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              fontSize: 11,
+              color: "#8a7a5a",
+              minHeight: 16,
+            }}
+          >
+            {p.goals > 0 && <span>⚽ {p.goals}</span>}
+            {p.assists > 0 && <span>🅰️ {p.assists}</span>}
+            {p.mvps > 0 && <span>🏅 {p.mvps}</span>}
+            {!p.goals && !p.assists && !p.mvps && (
+              <span style={{ color: "#3a3020" }}>Sin estadísticas</span>
+            )}
+          </div>
+
+          {/* FILA 3: ACTION BUTTONS */}
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              flexWrap: "wrap",
+              minHeight: 16,
+            }}
+          >
+            {mode === "own" && !isStar && (
+              <>
+                <button
+                  onClick={() =>
+                    onToggleListForSale(teamName, p.id, !p.listedForSale)
+                  }
+                  style={{
+                    background: "transparent",
+                    border: "1px solid #c9a227",
+                    color: "#e8c252",
+                    borderRadius: 6,
+                    padding: "3px 8px",
+                    cursor: "pointer",
+                    fontSize: 11,
+                  }}
+                >
+                  {p.listedForSale ? "Quitar del mercado" : "Poner en venta"}
+                </button>
+                <button
+                  onClick={() => onDiscard(teamName, p)}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid #f0c040",
+                    color: "#f0c040",
+                    borderRadius: 6,
+                    padding: "3px 8px",
+                    cursor: "pointer",
+                    fontSize: 11,
+                  }}
+                >
+                  Descartar
+                </button>
+              </>
+            )}
+            {mode === "other" && !isStar && (
+              <>
+                <button
+                  onClick={() => onOpenOffer(teamName, p)}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid #c9a227",
+                    color: "#e8c252",
+                    borderRadius: 6,
+                    padding: "3px 8px",
+                    cursor: "pointer",
+                    fontSize: 11,
+                  }}
+                >
+                  Ofertar
+                </button>
+                <button
+                  onClick={() =>
+                    !locked &&
+                    onPayClause({
+                      sellerTeam: teamName,
+                      player: p,
+                      clauseTotal,
+                    })
+                  }
+                  disabled={locked}
+                  style={{
+                    background: "transparent",
+                    border: `1px solid ${locked ? "#3a3020" : "#c0392b"}`,
+                    color: locked ? "#3a3020" : "#c0392b",
+                    borderRadius: 6,
+                    padding: "3px 8px",
+                    cursor: locked ? "not-allowed" : "pointer",
+                    fontSize: 11,
+                  }}
+                >
+                  Pagar cláusula
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* FILA 4: CLAUSE */}
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              flexWrap: "wrap",
+              alignItems: "center",
+              minHeight: 16,
+            }}
+          >
+            {mode === "own" && !isStar && (
+              <>
+                <span
+                  style={{
+                    color: "#c0392b",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    marginRight: "auto",
+                  }}
+                >
+                  Cláusula: {fmtM(clauseTotal)}
+                  {p.listedForSale && (
+                    <span style={{ color: "#27ae60" }}> · en venta</span>
+                  )}
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0.5"
+                  step="0.5"
+                  placeholder="M€"
+                  value={clauseInvestInput[p.id] || ""}
+                  onChange={(e) =>
+                    onClauseInvestChange(p.id, e.target.value)
+                  }
+                  style={{
+                    ...inputStyle,
+                    width: 55,
+                    padding: "3px 6px",
+                    fontSize: 16,
+                  }}
+                />
+                <button
+                  onClick={() => onInvestInClause(teamName, p.id)}
+                  style={{
+                    background: "#c9a227",
+                    color: "#0a0805",
+                    border: "none",
+                    borderRadius: 6,
+                    padding: "3px 8px",
+                    cursor: "pointer",
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >
+                  ↑Cláusula
+                </button>
+              </>
+            )}
+            {mode === "other" && !isStar && (
+              <span
+                style={{
+                  color: locked ? "#8a7a5a" : "#c0392b",
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
+              >
+                {locked
+                  ? "🔒 Cláusula bloqueada (tras próximo partido)"
+                  : `Cláusula: ${fmtM(clauseTotal)}`}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function SortablePlayerRow({
+  p,
+  teamName,
+  mode,
+  teams,
+  clauseInvestInput,
+  onClauseInvestChange,
+  onInvestInClause,
+  onToggleListForSale,
+  onDiscard,
+  onOpenOffer,
+  onPayClause,
+  ...rest
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: p.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    background: isDragging ? "#0f2138" : "transparent",
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <div
+          {...listeners}
+          style={{
+            padding: "10px 8px 10px 0",
+            cursor: "grab",
+            color: "#3a5a7a",
+            touchAction: "none",
+          }}
+        >
+          ⠿
+        </div>
+        <div style={{ flex: 1 }}>
+          <PlayerRow
+            p={p}
+            teamName={teamName}
+            mode={mode}
+            teams={teams}
+            clauseInvestInput={clauseInvestInput}
+            onClauseInvestChange={onClauseInvestChange}
+            onInvestInClause={onInvestInClause}
+            onToggleListForSale={onToggleListForSale}
+            onDiscard={onDiscard}
+            onOpenOffer={onOpenOffer}
+            onPayClause={onPayClause}
+            {...rest}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SquadDndList({
+  teamName,
+  squad,
+  onReorder,
+  teams,
+  clauseInvestInput,
+  onClauseInvestChange,
+  onInvestInClause,
+  onToggleListForSale,
+  onDiscard,
+  onOpenOffer,
+  onPayClause,
+}) {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    }),
+  );
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = squad.findIndex((p) => p.id === active.id);
+    const newIndex = squad.findIndex((p) => p.id === over.id);
+    onReorder(teamName, oldIndex, newIndex, squad);
+  };
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={squad.map((p) => p.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {squad.map((p) => (
+          <SortablePlayerRow
+            key={p.id}
+            p={p}
+            teamName={teamName}
+            mode="own"
+            teams={teams}
+            clauseInvestInput={clauseInvestInput}
+            onClauseInvestChange={onClauseInvestChange}
+            onInvestInClause={onInvestInClause}
+            onToggleListForSale={onToggleListForSale}
+            onDiscard={onDiscard}
+            onOpenOffer={onOpenOffer}
+            onPayClause={onPayClause}
+          />
+        ))}
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function LegendRevealModal({ reveal, rating, onContinue }) {
+  const { player, step } = reveal;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background:
+          "radial-gradient(circle at center,#3a2b00 0%,#120f08 45%,#000 100%)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 99999,
+        overflow: "hidden",
+      }}
+    >
+      {/* Fondo brillante */}
+      <div
+        style={{
+          position: "absolute",
+          width: 900,
+          height: 900,
+          borderRadius: "50%",
+          background:
+            "radial-gradient(circle,rgba(255,210,80,.35),transparent 70%)",
+          animation: "pulseGlow 2s infinite",
+        }}
+      />
+
+      {/* Partículas */}
+      {Array.from({ length: 35 }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            width: 4 + Math.random() * 5,
+            height: 4 + Math.random() * 5,
+            borderRadius: "50%",
+            background: "#f6d46d",
+            opacity: 0.8,
+            animation: `particle ${2 + Math.random() * 3}s linear infinite`,
+          }}
+        />
+      ))}
+
+      {/* Flash */}
+      {step === 4 && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "#fff",
+            animation: "flash .35s forwards",
+          }}
+        />
+      )}
+
+      <div
+        style={{
+          width: 380,
+          minHeight: 560,
+          borderRadius: 20,
+          background: "linear-gradient(180deg,#1d1810,#14110c 60%,#0d0a06)",
+          border: "3px solid #c9a227",
+          boxShadow: "0 0 40px rgba(255,215,80,.7)",
+          padding: 30,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          alignItems: "center",
+          position: "relative",
+        }}
+      >
+        <div />
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 28,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 26,
+              color: "#e8c252",
+              fontWeight: 900,
+              letterSpacing: 4,
+            }}
+          >
+            ⭐ LEYENDA ⭐
+          </div>
+
+          {step >= 1 && (
+            <div
+              style={{
+                transform: "scale(2.5)",
+                animation: "pop 2.5s",
+              }}
+            >
+              <CountryFlag country={player.nat} width={180} height={135} />
+            </div>
+          )}
+
+          {step >= 2 && (
+            <div
+              style={{
+                fontSize: 52,
+                fontWeight: 900,
+                color: "#fff",
+                animation: "pop 2.5s",
+              }}
+            >
+              {player.pos}
+            </div>
+          )}
+
+          {step >= 3 && (
+            <div
+              style={{
+                fontSize: 82,
+                fontWeight: 900,
+                color: ratingColor(player.overall),
+                textShadow: "0 0 20px rgba(255,255,255,3)",
+                animation:
+                  rating === player.overall ? "ratingDone 3s" : undefined,
+              }}
+            >
+              {rating}
+            </div>
+          )}
+
+          {step >= 5 && (
+            <>
+              <div
+                style={{
+                  width: "80%",
+                  height: 2,
+                  background: "#c9a227",
+                }}
+              />
+
+              <div
+                style={{
+                  fontSize: 36,
+                  fontWeight: 900,
+                  color: "#fff",
+                  textAlign: "center",
+                  animation: "nameReveal 3s",
+                }}
+              >
+                {player.name}
+              </div>
+
+              <button
+                onClick={onContinue}
+                style={{
+                  marginTop: 20,
+                  padding: "12px 34px",
+                  background: "#c9a227",
+                  border: "none",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  fontWeight: 800,
+                  fontSize: 17,
+                }}
+              >
+                Continuar
+              </button>
+            </>
+          )}
+        </div>
+
+        <div />
+      </div>
+
+      <style>{`
+
+      @keyframes pulseGlow{
+
+        0%{transform:scale(.9);opacity:.45;}
+
+        50%{transform:scale(1.08);opacity:.9;}
+
+        100%{transform:scale(.9);opacity:.45;}
+
+      }
+
+      @keyframes particle{
+
+        from{
+          transform:translateY(120px);
+          opacity:0;
+        }
+
+        20%{
+          opacity:1;
+        }
+
+        to{
+          transform:translateY(-220px);
+          opacity:0;
+        }
+
+      }
+
+      @keyframes flash{
+
+        from{opacity:1;}
+
+        to{opacity:0;}
+
+      }
+
+      @keyframes pop{
+
+        from{
+          opacity:0;
+          transform:scale(.4);
+        }
+
+        to{
+          opacity:1;
+          transform:scale(1);
+        }
+
+      }
+
+      @keyframes ratingDone{
+
+        0%{
+          transform:scale(1);
+        }
+
+        50%{
+          transform:scale(1.3);
+        }
+
+        100%{
+          transform:scale(1);
+        }
+
+      }
+
+      @keyframes nameReveal{
+
+        from{
+          opacity:0;
+          transform:translateY(35px) scale(.8);
+        }
+
+        to{
+          opacity:1;
+          transform:translateY(0) scale(1);
+        }
+
+      }
+
+      `}</style>
+    </div>
+  );
+}
+
 export default function FifaLiga() {
   const [view, setView] = useState(VIEWS.LOGIN);
 
@@ -2102,751 +2902,6 @@ export default function FifaLiga() {
     { v: VIEWS.SQUADS, icon: "👥", label: "Plantillas" },
   ];
 
-  const PlayerRow = ({ p, teamName, mode }) => {
-    // mode: "own" (full management) | "other" (read-only + clause/offer)
-    const clauseTotal =
-      (p.clauseValue ?? clauseBase(p.overall, p.pos)) +
-      (p.clauseInvested || 0) * 2;
-    const team = teams.find((t) => t.name === teamName);
-    const isStar = team?.squad?.star?.name === p.name;
-    const locked = mode === "other" && isClauseLocked(p, team?.lastMatchAt);
-    const ICON_SIZE = 28;
-
-    return (
-      <div style={{ padding: "12px 0", borderBottom: "1px solid #241e10" }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
-          {/* ── COLUMNA IZQUIERDA: POS / NAT / CLUB ── */}
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-around",
-              alignItems: "center",
-              width: ICON_SIZE + 8,
-              flexShrink: 0,
-            }}
-          >
-            {/* POS */}
-            <div
-              style={{
-                width: ICON_SIZE + 8,
-                height: ICON_SIZE,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: posColor(p.pos || p.position),
-                borderRadius: 6,
-              }}
-            >
-              <span
-                style={{
-                  color: "#fff",
-                  fontSize: 9,
-                  fontWeight: 800,
-                  textAlign: "center",
-                  lineHeight: 1,
-                }}
-              >
-                {p.pos || p.position}
-              </span>
-            </div>
-            {/* NAT */}
-            <div
-              style={{
-                width: ICON_SIZE + 8,
-                height: ICON_SIZE,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <CountryFlag country={p.nat} />
-            </div>
-            {/* CLUB */}
-            <div
-              style={{
-                width: ICON_SIZE + 8,
-                height: ICON_SIZE,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {clubLogos[p.club] ? (
-                <img
-                  src={clubLogos[p.club]}
-                  alt={p.club}
-                  style={{
-                    width: ICON_SIZE,
-                    height: ICON_SIZE,
-                    objectFit: "contain",
-                  }}
-                />
-              ) : (
-                <span
-                  style={{
-                    fontSize: 9,
-                    color: "#8a7a5a",
-                    textAlign: "center",
-                    lineHeight: 1.1,
-                  }}
-                >
-                  {p.club}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* ── COLUMNA DERECHA: 4 filas ── */}
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-around",
-              gap: 4,
-            }}
-          >
-            {/* FILA 1: NAME + RATING + MARKET VALUE */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <span
-                style={{
-                  fontWeight: 700,
-                  fontSize: 14,
-                  color: "#f0e6d2",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  flex: 1,
-                  marginRight: 8,
-                }}
-              >
-                {p.name}
-              </span>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  flexShrink: 0,
-                }}
-              >
-                {p.marketValue &&
-                  p.marketValue > clauseBase(p.overall, p.pos) && (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: "#27ae60",
-                        fontWeight: 700,
-                      }}
-                    >
-                      ↑{fmtM(p.marketValue)}
-                    </span>
-                  )}
-                <span
-                  style={{
-                    fontWeight: 800,
-                    color: ratingColor(p.overall),
-                    fontSize: 17,
-                  }}
-                >
-                  {p.overall}
-                </span>
-              </div>
-            </div>
-
-            {/* FILA 2: GOALS / ASSISTS / MVPS */}
-            <div
-              style={{
-                display: "flex",
-                gap: 10,
-                fontSize: 11,
-                color: "#8a7a5a",
-                minHeight: 16,
-              }}
-            >
-              {p.goals > 0 && <span>⚽ {p.goals}</span>}
-              {p.assists > 0 && <span>🅰️ {p.assists}</span>}
-              {p.mvps > 0 && <span>🏅 {p.mvps}</span>}
-              {!p.goals && !p.assists && !p.mvps && (
-                <span style={{ color: "#3a3020" }}>Sin estadísticas</span>
-              )}
-            </div>
-
-            {/* FILA 3: ACTION BUTTONS */}
-            <div
-              style={{
-                display: "flex",
-                gap: 6,
-                flexWrap: "wrap",
-                minHeight: 16,
-              }}
-            >
-              {mode === "own" && !isStar && (
-                <>
-                  <button
-                    onClick={() =>
-                      toggleListForSale(teamName, p.id, !p.listedForSale)
-                    }
-                    style={{
-                      background: "transparent",
-                      border: "1px solid #c9a227",
-                      color: "#e8c252",
-                      borderRadius: 6,
-                      padding: "3px 8px",
-                      cursor: "pointer",
-                      fontSize: 11,
-                    }}
-                  >
-                    {p.listedForSale ? "Quitar del mercado" : "Poner en venta"}
-                  </button>
-                  <button
-                    onClick={() => setDiscardConfirm({ teamName, player: p })}
-                    style={{
-                      background: "transparent",
-                      border: "1px solid #f0c040",
-                      color: "#f0c040",
-                      borderRadius: 6,
-                      padding: "3px 8px",
-                      cursor: "pointer",
-                      fontSize: 11,
-                    }}
-                  >
-                    Descartar
-                  </button>
-                </>
-              )}
-              {mode === "other" && !isStar && (
-                <>
-                  <button
-                    onClick={() => openOfferModal(teamName, p)}
-                    style={{
-                      background: "transparent",
-                      border: "1px solid #c9a227",
-                      color: "#e8c252",
-                      borderRadius: 6,
-                      padding: "3px 8px",
-                      cursor: "pointer",
-                      fontSize: 11,
-                    }}
-                  >
-                    Ofertar
-                  </button>
-                  <button
-                    onClick={() =>
-                      !locked &&
-                      setClauseConfirm({
-                        sellerTeam: teamName,
-                        player: p,
-                        clauseTotal,
-                      })
-                    }
-                    disabled={locked}
-                    style={{
-                      background: "transparent",
-                      border: `1px solid ${locked ? "#3a3020" : "#c0392b"}`,
-                      color: locked ? "#3a3020" : "#c0392b",
-                      borderRadius: 6,
-                      padding: "3px 8px",
-                      cursor: locked ? "not-allowed" : "pointer",
-                      fontSize: 11,
-                    }}
-                  >
-                    Pagar cláusula
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* FILA 4: CLAUSE */}
-            <div
-              style={{
-                display: "flex",
-                gap: 6,
-                flexWrap: "wrap",
-                alignItems: "center",
-                minHeight: 16,
-              }}
-            >
-              {mode === "own" && !isStar && (
-                <>
-                  <span
-                    style={{
-                      color: "#c0392b",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      marginRight: "auto",
-                    }}
-                  >
-                    Cláusula: {fmtM(clauseTotal)}
-                    {p.listedForSale && (
-                      <span style={{ color: "#27ae60" }}> · en venta</span>
-                    )}
-                  </span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    min="0.5"
-                    step="0.5"
-                    placeholder="M€"
-                    value={clauseInvestInput[p.id] || ""}
-                    onChange={(e) =>
-                      setClauseInvestInput((prev) => ({
-                        ...prev,
-                        [p.id]: e.target.value,
-                      }))
-                    }
-                    style={{
-                      ...input,
-                      width: 55,
-                      padding: "3px 6px",
-                      fontSize: 16,
-                    }}
-                  />
-                  <button
-                    onClick={() => investInClause(teamName, p.id)}
-                    style={{
-                      background: "#c9a227",
-                      color: "#0a0805",
-                      border: "none",
-                      borderRadius: 6,
-                      padding: "3px 8px",
-                      cursor: "pointer",
-                      fontSize: 11,
-                      fontWeight: 700,
-                    }}
-                  >
-                    ↑Cláusula
-                  </button>
-                </>
-              )}
-              {mode === "other" && !isStar && (
-                <span
-                  style={{
-                    color: locked ? "#8a7a5a" : "#c0392b",
-                    fontSize: 11,
-                    fontWeight: 700,
-                  }}
-                >
-                  {locked
-                    ? "🔒 Cláusula bloqueada (tras próximo partido)"
-                    : `Cláusula: ${fmtM(clauseTotal)}`}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  function LegendRevealModal({ reveal, rating, onContinue }) {
-    const { player, step } = reveal;
-
-    return (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          background:
-            "radial-gradient(circle at center,#3a2b00 0%,#120f08 45%,#000 100%)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 99999,
-          overflow: "hidden",
-        }}
-      >
-        {/* Fondo brillante */}
-        <div
-          style={{
-            position: "absolute",
-            width: 900,
-            height: 900,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle,rgba(255,210,80,.35),transparent 70%)",
-            animation: "pulseGlow 2s infinite",
-          }}
-        />
-
-        {/* Partículas */}
-        {Array.from({ length: 35 }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              width: 4 + Math.random() * 5,
-              height: 4 + Math.random() * 5,
-              borderRadius: "50%",
-              background: "#f6d46d",
-              opacity: 0.8,
-              animation: `particle ${2 + Math.random() * 3}s linear infinite`,
-            }}
-          />
-        ))}
-
-        {/* Flash */}
-        {step === 4 && (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              background: "#fff",
-              animation: "flash .35s forwards",
-            }}
-          />
-        )}
-
-        <div
-          style={{
-            width: 380,
-            minHeight: 560,
-            borderRadius: 20,
-            background: "linear-gradient(180deg,#1d1810,#14110c 60%,#0d0a06)",
-            border: "3px solid #c9a227",
-            boxShadow: "0 0 40px rgba(255,215,80,.7)",
-            padding: 30,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            alignItems: "center",
-            position: "relative",
-          }}
-        >
-          <div />
-
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 28,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 26,
-                color: "#e8c252",
-                fontWeight: 900,
-                letterSpacing: 4,
-              }}
-            >
-              ⭐ LEYENDA ⭐
-            </div>
-
-            {step >= 1 && (
-              <div
-                style={{
-                  transform: "scale(2.5)",
-                  animation: "pop 2.5s",
-                }}
-              >
-                <CountryFlag country={player.nat} width={180} height={135} />
-              </div>
-            )}
-
-            {step >= 2 && (
-              <div
-                style={{
-                  fontSize: 52,
-                  fontWeight: 900,
-                  color: "#fff",
-                  animation: "pop 2.5s",
-                }}
-              >
-                {player.pos}
-              </div>
-            )}
-
-            {step >= 3 && (
-              <div
-                style={{
-                  fontSize: 82,
-                  fontWeight: 900,
-                  color: ratingColor(player.overall),
-                  textShadow: "0 0 20px rgba(255,255,255,3)",
-                  animation:
-                    rating === player.overall ? "ratingDone 3s" : undefined,
-                }}
-              >
-                {rating}
-              </div>
-            )}
-
-            {step >= 5 && (
-              <>
-                <div
-                  style={{
-                    width: "80%",
-                    height: 2,
-                    background: "#c9a227",
-                  }}
-                />
-
-                <div
-                  style={{
-                    fontSize: 36,
-                    fontWeight: 900,
-                    color: "#fff",
-                    textAlign: "center",
-                    animation: "nameReveal 3s",
-                  }}
-                >
-                  {player.name}
-                </div>
-
-                <button
-                  onClick={onContinue}
-                  style={{
-                    marginTop: 20,
-                    padding: "12px 34px",
-                    background: "#c9a227",
-                    border: "none",
-                    borderRadius: 10,
-                    cursor: "pointer",
-                    fontWeight: 800,
-                    fontSize: 17,
-                  }}
-                >
-                  Continuar
-                </button>
-              </>
-            )}
-          </div>
-
-          <div />
-        </div>
-
-        <style>{`
-
-      @keyframes pulseGlow{
-
-        0%{transform:scale(.9);opacity:.45;}
-
-        50%{transform:scale(1.08);opacity:.9;}
-
-        100%{transform:scale(.9);opacity:.45;}
-
-      }
-
-      @keyframes particle{
-
-        from{
-          transform:translateY(120px);
-          opacity:0;
-        }
-
-        20%{
-          opacity:1;
-        }
-
-        to{
-          transform:translateY(-220px);
-          opacity:0;
-        }
-
-      }
-
-      @keyframes flash{
-
-        from{opacity:1;}
-
-        to{opacity:0;}
-
-      }
-
-      @keyframes pop{
-
-        from{
-          opacity:0;
-          transform:scale(.4);
-        }
-
-        to{
-          opacity:1;
-          transform:scale(1);
-        }
-
-      }
-
-      @keyframes ratingDone{
-
-        0%{
-          transform:scale(1);
-        }
-
-        50%{
-          transform:scale(1.3);
-        }
-
-        100%{
-          transform:scale(1);
-        }
-
-      }
-
-      @keyframes nameReveal{
-
-        from{
-          opacity:0;
-          transform:translateY(35px) scale(.8);
-        }
-
-        to{
-          opacity:1;
-          transform:translateY(0) scale(1);
-        }
-
-      }
-
-      `}</style>
-      </div>
-    );
-  }
-
-  function SortablePlayerRow({ p, teamName, mode, ...rest }) {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: p.id });
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
-      background: isDragging ? "#0f2138" : "transparent",
-    };
-    return (
-      <div ref={setNodeRef} style={style} {...attributes}>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <div
-            {...listeners}
-            style={{
-              padding: "10px 8px 10px 0",
-              cursor: "grab",
-              color: "#3a5a7a",
-              touchAction: "none",
-            }}
-          >
-            ⠿
-          </div>
-          <div style={{ flex: 1 }}>
-            <PlayerRow p={p} teamName={teamName} mode={mode} {...rest} />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function SquadDndList({ teamName, squad, onReorder }) {
-    const sensors = useSensors(
-      useSensor(PointerSensor),
-      useSensor(TouchSensor, {
-        activationConstraint: { delay: 150, tolerance: 5 },
-      }),
-    );
-    const handleDragEnd = (event) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      const oldIndex = squad.findIndex((p) => p.id === active.id);
-      const newIndex = squad.findIndex((p) => p.id === over.id);
-      onReorder(teamName, oldIndex, newIndex, squad); // ← pasamos squad (bench) también
-    };
-    return (
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={squad.map((p) => p.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {squad.map((p) => (
-            <SortablePlayerRow
-              key={p.id}
-              p={p}
-              teamName={teamName}
-              mode="own"
-            />
-          ))}
-        </SortableContext>
-      </DndContext>
-    );
-  }
-
-  const getCountryCode = (input) => {
-    if (!input) return null;
-
-    const normalized = input.toString().trim().toLowerCase();
-
-    if (FOOTBALL_COUNTRY_MAP[normalized]) {
-      return FOOTBALL_COUNTRY_MAP[normalized];
-    }
-
-    const iso = countries.getAlpha2Code(input.trim(), "en");
-
-    return iso || null;
-  };
-
-  const FOOTBALL_COUNTRY_MAP = {
-    england: "GB",
-    uk: "GB",
-    "united kingdom": "GB",
-    scotland: "GB",
-    wales: "GB",
-    "northern ireland": "GB",
-    usa: "US",
-    "united states": "US",
-    "ivory coast": "CI",
-    "south korea": "KR",
-    "north korea": "KP",
-    russia: "RU",
-    iran: "IR",
-    eng: "GB",
-    esp: "ES",
-    fra: "FR",
-    ger: "DE",
-    ita: "IT",
-    bra: "BR",
-    arg: "AR",
-  };
-
-  const CountryFlag = ({ country, width = 16, height = 12 }) => {
-    const code = getCountryCode(country);
-
-    if (!code) return <span>🌍</span>;
-
-    const Key = code.toUpperCase();
-
-    const Component = Flags[Key];
-
-    if (!Component) return <span>🌍</span>;
-
-    return (
-      <Component
-        title={country}
-        style={{
-          width,
-          height,
-        }}
-      />
-    );
-  };
-
   return (
     <div
       style={{
@@ -4407,12 +4462,27 @@ export default function FifaLiga() {
                               Todos los jugadores están en el campo.
                             </p>
                           )}
-                          {bench.map((p, i) => (
+                          {bench.map((p) => (
                             <PlayerRow
-                              key={i}
+                              key={p.id}
                               p={p}
                               teamName={t.name}
                               mode={isOwn ? "own" : "other"}
+                              teams={teams}
+                              clauseInvestInput={clauseInvestInput}
+                              onClauseInvestChange={(id, val) =>
+                                setClauseInvestInput((prev) => ({
+                                  ...prev,
+                                  [id]: val,
+                                }))
+                              }
+                              onInvestInClause={investInClause}
+                              onToggleListForSale={toggleListForSale}
+                              onDiscard={(tn, pl) =>
+                                setDiscardConfirm({ teamName: tn, player: pl })
+                              }
+                              onOpenOffer={openOfferModal}
+                              onPayClause={setClauseConfirm}
                             />
                           ))}
                         </div>
@@ -4444,6 +4514,21 @@ export default function FifaLiga() {
                             p={t.squad.star}
                             teamName={t.name}
                             mode={isOwn ? "own" : "other"}
+                            teams={teams}
+                            clauseInvestInput={clauseInvestInput}
+                            onClauseInvestChange={(id, val) =>
+                              setClauseInvestInput((prev) => ({
+                                ...prev,
+                                [id]: val,
+                              }))
+                            }
+                            onInvestInClause={investInClause}
+                            onToggleListForSale={toggleListForSale}
+                            onDiscard={(tn, pl) =>
+                              setDiscardConfirm({ teamName: tn, player: pl })
+                            }
+                            onOpenOffer={openOfferModal}
+                            onPayClause={setClauseConfirm}
                           />
                         </div>
                       )}
@@ -4462,14 +4547,44 @@ export default function FifaLiga() {
                           teamName={t.name}
                           squad={t.squad.squad}
                           onReorder={reorderSquad}
+                          teams={teams}
+                          clauseInvestInput={clauseInvestInput}
+                          onClauseInvestChange={(id, val) =>
+                            setClauseInvestInput((prev) => ({
+                              ...prev,
+                              [id]: val,
+                            }))
+                          }
+                          onInvestInClause={investInClause}
+                          onToggleListForSale={toggleListForSale}
+                          onDiscard={(tn, pl) =>
+                            setDiscardConfirm({ teamName: tn, player: pl })
+                          }
+                          onOpenOffer={openOfferModal}
+                          onPayClause={setClauseConfirm}
                         />
                       ) : (
-                        t.squad.squad.map((p, i) => (
+                        t.squad.squad.map((p) => (
                           <PlayerRow
-                            key={i}
+                            key={p.id}
                             p={p}
                             teamName={t.name}
                             mode="other"
+                            teams={teams}
+                            clauseInvestInput={clauseInvestInput}
+                            onClauseInvestChange={(id, val) =>
+                              setClauseInvestInput((prev) => ({
+                                ...prev,
+                                [id]: val,
+                              }))
+                            }
+                            onInvestInClause={investInClause}
+                            onToggleListForSale={toggleListForSale}
+                            onDiscard={(tn, pl) =>
+                              setDiscardConfirm({ teamName: tn, player: pl })
+                            }
+                            onOpenOffer={openOfferModal}
+                            onPayClause={setClauseConfirm}
                           />
                         ))
                       )}
