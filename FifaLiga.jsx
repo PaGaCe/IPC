@@ -134,12 +134,7 @@ const CountryFlag = ({ country, width = 16, height = 12 }) => {
   const Key = code.toUpperCase();
   const Component = Flags[Key];
   if (!Component) return <span>🌍</span>;
-  return (
-    <Component
-      title={country}
-      style={{ width, height }}
-    />
-  );
+  return <Component title={country} style={{ width, height }} />;
 };
 
 const inputStyle = {
@@ -439,7 +434,14 @@ const PlayerRow = ({
           >
             {mode === "own" && !isStar && (
               <>
-                <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    width: "100%",
+                  }}
+                >
                   <span
                     style={{
                       color: "#c0392b",
@@ -457,9 +459,7 @@ const PlayerRow = ({
                     step="0.5"
                     placeholder="M€"
                     value={clauseInvestInput[p.id] || ""}
-                    onChange={(e) =>
-                      onClauseInvestChange(p.id, e.target.value)
-                    }
+                    onChange={(e) => onClauseInvestChange(p.id, e.target.value)}
                     style={{
                       ...inputStyle,
                       width: 46,
@@ -487,7 +487,9 @@ const PlayerRow = ({
                   </button>
                 </div>
                 {p.listedForSale && (
-                  <span style={{ color: "#27ae60", fontSize: 10 }}>en venta</span>
+                  <span style={{ color: "#27ae60", fontSize: 10 }}>
+                    en venta
+                  </span>
                 )}
               </>
             )}
@@ -1885,7 +1887,10 @@ export default function FifaLiga() {
         if (s.marketDay) latestMarketDay = s.marketDay;
       }
     } catch (e) {
-      console.error("resolveAuctions: failed to fetch latest state, using local:", e);
+      console.error(
+        "resolveAuctions: failed to fetch latest state, using local:",
+        e,
+      );
     }
     const now = Date.now();
     const today = getDayKey();
@@ -4672,14 +4677,17 @@ export default function FifaLiga() {
                     {availableLegends.length !== 1 ? "s" : ""}
                   </div>
                   {(() => {
-                    const canAffordLegend = myTeamObj && myTeamObj.budget >= LEGEND_MARKET_PRICE;
+                    const canAffordLegend =
+                      myTeamObj && myTeamObj.budget >= LEGEND_MARKET_PRICE;
                     return (
                       <button
                         onClick={() => {
                           if (!canAffordLegend) return;
                           const random =
                             availableLegends[
-                              Math.floor(Math.random() * availableLegends.length)
+                              Math.floor(
+                                Math.random() * availableLegends.length,
+                              )
                             ];
                           setLegendBuyConfirm(random);
                         }}
@@ -4692,7 +4700,8 @@ export default function FifaLiga() {
                           opacity: canAffordLegend ? 1 : 0.5,
                         }}
                       >
-                        🎲 Obtener leyenda aleatoria — {fmtM(LEGEND_MARKET_PRICE)}
+                        🎲 Obtener leyenda aleatoria —{" "}
+                        {fmtM(LEGEND_MARKET_PRICE)}
                       </button>
                     );
                   })()}
@@ -5839,7 +5848,7 @@ export default function FifaLiga() {
             >
               🏆 Fin de temporada: 1º {fmtM(finalRankingPrize(0))} · 2º{" "}
               {fmtM(finalRankingPrize(1))} · 3º {fmtM(finalRankingPrize(2))}{" "}
-              (cada puesto -30%) · Máx. goleador +{fmtM(SEASON_PRIZE_TOPSCORER)}{" "}
+              (cada puesto -15%) · Máx. goleador +{fmtM(SEASON_PRIZE_TOPSCORER)}{" "}
               · Máx. asistente +{fmtM(SEASON_PRIZE_TOPASSIST)} · Mejor jugador +
               {fmtM(SEASON_PRIZE_MVP)} · Zamora +{fmtM(SEASON_PRIZE_ZAMORA)}
             </p>
