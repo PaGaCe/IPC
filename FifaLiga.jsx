@@ -74,6 +74,7 @@ import {
   initTeam,
   getDayKey,
   msUntilNextMarketRefresh,
+  lastScheduledRefreshBefore,
   fmtCountdown,
   allPlayersOf,
   hasIncompleteSquad,
@@ -1968,15 +1969,15 @@ export default function FifaLiga() {
     });
   };
 
-  // ── Market countdown: ticks every second globally ──
+  // ── Market countdown: ticks every second globally (fixed 15:30 / 3:30) ──
   const resolveAuctionsRef = useRef(null);
   resolveAuctionsRef.current = resolveAuctions;
   const resolvedAtRef = useRef(null);
   useEffect(() => {
     resolvedAtRef.current = null;
-    setMarketCountdownMs(msUntilNextMarketRefresh(marketResetAt));
+    setMarketCountdownMs(msUntilNextMarketRefresh());
     const tick = setInterval(() => {
-      const remaining = msUntilNextMarketRefresh(marketResetAt);
+      const remaining = msUntilNextMarketRefresh();
       setMarketCountdownMs(remaining);
       if (remaining <= 0 && resolvedAtRef.current !== marketResetAt) {
         resolvedAtRef.current = marketResetAt;
@@ -1984,12 +1985,13 @@ export default function FifaLiga() {
       }
     }, 1000);
     return () => clearInterval(tick);
-  }, [marketResetAt]);
+  }, []);
 
-  // ── Auto-resolve on load / live update: if marketResetAt is already stale, resolve ──
+  // ── Auto-resolve on load / live update: if a scheduled refresh was missed ──
   useEffect(() => {
     if (!marketResetAt) return;
-    if (Date.now() - marketResetAt >= 12 * 60 * 60 * 1000) {
+    const lastRefresh = lastScheduledRefreshBefore();
+    if (lastRefresh && marketResetAt < lastRefresh.getTime()) {
       resolveAuctionsRef.current?.();
     }
   }, [marketResetAt]);

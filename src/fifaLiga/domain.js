@@ -176,13 +176,13 @@ export function isNightClauseLock() {
 }
 
 export function isClauseLocked(player, teamLastMatchAt) {
-  // night general block
   if (isNightClauseLock()) return true;
+  if (!player.joinedAt) return false;
 
-  if (!player.joinedAt) return false; // original draft players are never locked
-  // locked if the team hasn't played a match since the player joined
-  if (!teamLastMatchAt) return true;
-  return player.joinedAt > teamLastMatchAt;
+  const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
+  if (Date.now() - player.joinedAt >= FOUR_DAYS_MS) return false;
+  if (teamLastMatchAt && player.joinedAt <= teamLastMatchAt) return false;
+  return true;
 }
 export function shuffle(arr) {
   const a = [...arr];
@@ -540,15 +540,27 @@ export function initTeam(name) {
 export function getDayKey() {
   return new Date().toISOString().slice(0, 10);
 }
-export function msUntilNextMarketRefresh(resetAt) {
-  if (resetAt) {
-    return Math.max(0, resetAt + 12 * 60 * 60 * 1000 - Date.now());
+export function nextMarketRefreshTime(now = new Date()) {
+  const today330 = new Date(now); today330.setHours(3, 30, 0, 0);
+  const today1530 = new Date(now); today1530.setHours(15, 30, 0, 0);
+  const tomorrow330 = new Date(now); tomorrow330.setDate(tomorrow330.getDate() + 1);
+  tomorrow330.setHours(3, 30, 0, 0);
+  const tomorrow1530 = new Date(now); tomorrow1530.setDate(tomorrow1530.getDate() + 1);
+  tomorrow1530.setHours(15, 30, 0, 0);
+  return [today330, today1530, tomorrow330, tomorrow1530].find(c => c >= now);
+}
+export function msUntilNextMarketRefresh() {
+  return Math.max(0, nextMarketRefreshTime().getTime() - Date.now());
+}
+export function lastScheduledRefreshBefore(now = new Date()) {
+  const times = [];
+  for (let d = 0; d <= 1; d++) {
+    const date = new Date(now); date.setDate(date.getDate() - d);
+    const t330 = new Date(date); t330.setHours(3, 30, 0, 0); times.push(t330);
+    const t1530 = new Date(date); t1530.setHours(15, 30, 0, 0); times.push(t1530);
   }
-  const now = new Date();
-  const nextMidnight = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
-  );
-  return nextMidnight.getTime() - Date.now();
+  const past = times.filter(t => t <= now);
+  return past.length ? past.reduce((a, b) => a > b ? a : b) : null;
 }
 export function fmtCountdown(ms) {
   if (ms <= 0) return "00:00:00";
