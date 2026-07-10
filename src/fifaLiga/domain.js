@@ -1,8 +1,4 @@
-import {
-  SQUAD_POOL,
-  DRAFT_STARS,
-  MARKET_POOL,
-} from "../../PlayersPool";
+import { SQUAD_POOL, DRAFT_STARS, MARKET_POOL } from "../../PlayersPool";
 
 export const clubLogos = {
   "Real Madrid": "/clubs/realmadrid.png",
@@ -126,8 +122,8 @@ export const PLAYER_PICK_MIN_OVERALL = 87,
 export const LEGEND_PRIZE_MAX_OVERALL = 89; // tournament prize: a legend rated 89 or below
 export const LEGEND_MARKET_MIN_OVERALL = 89; // market purchase: a legend rated 89 or above
 export const LEGEND_MARKET_PRICE = 100;
-export const FINAL_RANKING_PRIZE_FIRST = 50,
-  FINAL_RANKING_PRIZE_DECAY = 0.3; // 1st=50M, each next position -30% of the previous
+export const FINAL_RANKING_PRIZE_FIRST = 65,
+  FINAL_RANKING_PRIZE_DECAY = 0.15; // 1st=65M, each next position -15% of the previous
 export function finalRankingPrize(positionIdx) {
   // positionIdx: 0 = 1st place
   return (
@@ -541,13 +537,17 @@ export function getDayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 export function nextMarketRefreshTime(now = new Date()) {
-  const today330 = new Date(now); today330.setHours(3, 30, 0, 0);
-  const today1530 = new Date(now); today1530.setHours(15, 30, 0, 0);
-  const tomorrow330 = new Date(now); tomorrow330.setDate(tomorrow330.getDate() + 1);
+  const today330 = new Date(now);
+  today330.setHours(3, 30, 0, 0);
+  const today1530 = new Date(now);
+  today1530.setHours(15, 30, 0, 0);
+  const tomorrow330 = new Date(now);
+  tomorrow330.setDate(tomorrow330.getDate() + 1);
   tomorrow330.setHours(3, 30, 0, 0);
-  const tomorrow1530 = new Date(now); tomorrow1530.setDate(tomorrow1530.getDate() + 1);
+  const tomorrow1530 = new Date(now);
+  tomorrow1530.setDate(tomorrow1530.getDate() + 1);
   tomorrow1530.setHours(15, 30, 0, 0);
-  return [today330, today1530, tomorrow330, tomorrow1530].find(c => c >= now);
+  return [today330, today1530, tomorrow330, tomorrow1530].find((c) => c >= now);
 }
 export function msUntilNextMarketRefresh() {
   return Math.max(0, nextMarketRefreshTime().getTime() - Date.now());
@@ -555,12 +555,17 @@ export function msUntilNextMarketRefresh() {
 export function lastScheduledRefreshBefore(now = new Date()) {
   const times = [];
   for (let d = 0; d <= 1; d++) {
-    const date = new Date(now); date.setDate(date.getDate() - d);
-    const t330 = new Date(date); t330.setHours(3, 30, 0, 0); times.push(t330);
-    const t1530 = new Date(date); t1530.setHours(15, 30, 0, 0); times.push(t1530);
+    const date = new Date(now);
+    date.setDate(date.getDate() - d);
+    const t330 = new Date(date);
+    t330.setHours(3, 30, 0, 0);
+    times.push(t330);
+    const t1530 = new Date(date);
+    t1530.setHours(15, 30, 0, 0);
+    times.push(t1530);
   }
-  const past = times.filter(t => t <= now);
-  return past.length ? past.reduce((a, b) => a > b ? a : b) : null;
+  const past = times.filter((t) => t <= now);
+  return past.length ? past.reduce((a, b) => (a > b ? a : b)) : null;
 }
 export function fmtCountdown(ms) {
   if (ms <= 0) return "00:00:00";
