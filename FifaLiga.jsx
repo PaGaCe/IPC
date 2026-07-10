@@ -5961,13 +5961,13 @@ export default function FifaLiga() {
                                 onClick={startPlayerPick}
                                 style={{ ...btn("#8e44ad"), fontSize: 13 }}
                               >
-                                🎴 Player Pick
+                                🎴 Player Pick 87-89 (1 de 3)
                               </button>
                               <button
                                 onClick={startLegendPick}
                                 style={{ ...btn("#c0392b"), fontSize: 13 }}
                               >
-                                🏆 Leyenda
+                                🏆 Leyenda 85-89
                               </button>
                             </div>
                           </div>
