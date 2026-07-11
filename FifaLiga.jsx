@@ -1015,7 +1015,7 @@ export default function FifaLiga() {
   // ─── Push notifications ──────────────────────────────────────────────
   useEffect(() => {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
-    if (Notification.permission === "granted") {
+    if (Notification.permission !== "denied") {
       registerFcm();
     }
   }, [userProfile?.uid, myTeamName]);

@@ -69,6 +69,19 @@ exports.onOfferCreated = onDocumentWritten(
       `onOfferCreated: doc=${event.params.leagueCode} antes=${beforeOffers.length} despues=${afterOffers.length}`,
     );
     if (afterOffers.length <= beforeOffers.length) return;
+
+    const newOffer = afterOffers[afterOffers.length - 1];
+    if (!newOffer) return;
+
+    const playerName = newOffer.player?.name || "un jugador";
+    const amount = newOffer.amount || 0;
+    const formatted = amount.toLocaleString("es-ES") + "€";
+
+    await sendToTeam(
+      newOffer.toTeam,
+      "Nueva oferta",
+      `${newOffer.fromTeam} ha ofertado ${formatted} por ${playerName}`,
+    );
   },
 );
 
