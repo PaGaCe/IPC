@@ -5932,7 +5932,7 @@ export default function FifaLiga() {
                           {champion} es el campeón
                         </div>
 
-                        {!championPrize && (
+                        {!championPrize && myTeamName === champion && (
                           <div>
                             <p
                               style={{
@@ -5941,7 +5941,7 @@ export default function FifaLiga() {
                                 marginBottom: 10,
                               }}
                             >
-                              Elige el premio:
+                              Elige tu premio:
                             </p>
                             <div
                               style={{
@@ -5973,6 +5973,17 @@ export default function FifaLiga() {
                           </div>
                         )}
 
+                        {!championPrize && myTeamName !== champion && (
+                          <p
+                            style={{
+                              color: "#8a7a5a",
+                              fontSize: 12,
+                            }}
+                          >
+                            El campeón está eligiendo su premio...
+                          </p>
+                        )}
+
                         {championPrize?.type === "money" &&
                           championPrize.claimed && (
                             <p
@@ -5988,7 +5999,7 @@ export default function FifaLiga() {
 
                         {(championPrize?.type === "playerpick" ||
                           championPrize?.type === "legendpick") &&
-                          !championPrize.claimed && (
+                          !championPrize.claimed && myTeamName === champion && (
                             <div>
                               <p
                                 style={{
@@ -6129,6 +6140,19 @@ export default function FifaLiga() {
                                 </button>
                               )}
                             </div>
+                          )}
+
+                        {(championPrize?.type === "playerpick" ||
+                          championPrize?.type === "legendpick") &&
+                          !championPrize.claimed && myTeamName !== champion && (
+                            <p
+                              style={{
+                                color: "#8a7a5a",
+                                fontSize: 12,
+                              }}
+                            >
+                              El campeón está eligiendo su premio...
+                            </p>
                           )}
 
                         {(championPrize?.type === "playerpick" ||
