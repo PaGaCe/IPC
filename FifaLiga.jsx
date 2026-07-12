@@ -1015,15 +1015,20 @@ export default function FifaLiga() {
   // ─── Push notifications ──────────────────────────────────────────────
   useEffect(() => {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return;
-    if (Notification.permission !== "denied") {
+    if (Notification.permission === "granted") {
+      registerFcm();
+    } else if (Notification.permission === "default") {
       registerFcm();
     }
+    // If "denied", don't attempt — browser won't show prompt again
   }, [userProfile?.uid, myTeamName]);
 
   async function registerFcm() {
     const hasPermission = await requestPermission();
     if (!hasPermission) {
-      showToast("Permiso de notificaciones denegado", "error");
+      if (Notification.permission === "denied") {
+        showToast("Notificaciones bloqueadas. Actívalas en la configuración del navegador.", "error");
+      }
       return;
     }
     const token = await getFcmToken();

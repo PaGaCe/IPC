@@ -2049,7 +2049,13 @@ exports.DRAFT_STARS = [
 
 // SQUAD_POOL: real players with verified overall in 80-82 range
 exports.SQUAD_POOL = [
-  { name: "Madueke", pos: "ED", nat: "England", club: "Arsenal", overall: 80 },
+  {
+    name: "Noni Madueke",
+    pos: "ED",
+    nat: "England",
+    club: "Arsenal",
+    overall: 80,
+  },
   {
     name: "Murillo",
     pos: "DFC",
@@ -2805,7 +2811,7 @@ exports.SQUAD_POOL = [
     pos: "EI",
     nat: "England",
     club: "Manchester United",
-    overall: 80,
+    overall: 79,
   },
   {
     name: "Noussair Mazraoui",
@@ -2861,7 +2867,7 @@ exports.SQUAD_POOL = [
     pos: "LD",
     nat: "Italy",
     club: "Inter Milan",
-    overall: 81,
+    overall: 78,
   },
   {
     name: "Davide Frattesi",
@@ -3317,7 +3323,7 @@ exports.SQUAD_POOL = [
     pos: "DFC",
     nat: "Spain",
     club: "Aston Villa",
-    overall: 81,
+    overall: 80,
   },
   {
     name: "Marc Guéhi",

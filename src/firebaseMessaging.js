@@ -12,22 +12,66 @@ const firebaseConfig = {
 };
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
 const db = getFirestore(app);
 
+let messagingInstance = null;
+
+function getMessagingInstance() {
+  if (!messagingInstance) {
+    try {
+      messagingInstance = getMessaging(app);
+    } catch (e) {
+      console.error("FCM getMessaging failed:", e);
+      return null;
+    }
+  }
+  return messagingInstance;
+}
+
+export function getPermissionStatus() {
+  if (!("Notification" in window)) return "unsupported";
+  return Notification.permission;
+}
+
 export async function requestPermission() {
+  if (!("Notification" in window)) {
+    console.warn("FCM: Notifications not supported in this browser");
+    return false;
+  }
+
+  if (Notification.permission === "denied") {
+    console.warn("FCM: Permission previously denied. User must reset in browser settings.");
+    return false;
+  }
+
+  if (Notification.permission === "granted") {
+    return true;
+  }
+
   const permission = await Notification.requestPermission();
+  console.log("FCM: Permission result:", permission);
   return permission === "granted";
 }
 
 export async function getFcmToken() {
   const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-  if (!vapidKey) return null;
+  if (!vapidKey) {
+    console.error("FCM: VITE_FIREBASE_VAPID_KEY is not set");
+    return null;
+  }
+
+  const messaging = getMessagingInstance();
+  if (!messaging) return null;
+
   try {
     const registration = await navigator.serviceWorker.register(
       "/firebase-messaging-sw.js",
     );
-    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration });
+    const token = await getToken(messaging, {
+      vapidKey,
+      serviceWorkerRegistration: registration,
+    });
+    console.log("FCM: Token obtained:", token?.substring(0, 20) + "...");
     return token;
   } catch (e) {
     console.error("FCM getToken failed:", e);
@@ -42,12 +86,15 @@ export async function saveTokenForTeam(uid, teamName, token) {
       token,
       updatedAt: Date.now(),
     });
+    console.log("FCM: Token saved for team", teamName);
   } catch (e) {
     console.error("saveTokenForTeam failed:", e);
   }
 }
 
 export function onForegroundMessage(callback) {
+  const messaging = getMessagingInstance();
+  if (!messaging) return () => {};
   return onMessage(messaging, (payload) => {
     callback(payload);
   });
