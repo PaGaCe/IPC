@@ -1021,7 +1021,7 @@ export default function FifaLiga() {
       registerFcm();
     }
     // If "denied", don't attempt — browser won't show prompt again
-  }, [userProfile?.uid, myTeamName]);
+  }, [authUser?.uid, myTeamName]);
 
   async function registerFcm() {
     const hasPermission = await requestPermission();
@@ -1039,8 +1039,8 @@ export default function FifaLiga() {
       );
       return;
     }
-    if (userProfile?.uid && myTeamName) {
-      await saveTokenForTeam(userProfile.uid, myTeamName, token);
+    if (authUser?.uid && myTeamName) {
+      await saveTokenForTeam(authUser.uid, myTeamName, token);
       showToast("Notificaciones activadas", "success");
     }
   }
